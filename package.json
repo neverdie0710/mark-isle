@@ -1,8 +1,37 @@
 {
   "name": "mark-isle",
   "version": "0.1.0",
-  "description": "Local-first 书签管理 Chrome 扩展 — 签屿 Mark Isle，覆盖新标签页，云盘目录同步，AI 自动分类",
+  "description": "Local-first Chrome bookmark manager and new tab dashboard with cloud-folder sync and AI classification.",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neverdie0710/mark-isle.git"
+  },
+  "homepage": "https://github.com/neverdie0710/mark-isle#readme",
+  "bugs": {
+    "url": "https://github.com/neverdie0710/mark-isle/issues"
+  },
+  "keywords": [
+    "chrome-extension",
+    "bookmark-manager",
+    "new-tab",
+    "new-tab-dashboard",
+    "local-first",
+    "offline-first",
+    "cloud-sync",
+    "file-system-access-api",
+    "ai-classification",
+    "manifest-v3",
+    "react",
+    "vite",
+    "typescript",
+    "tailwindcss",
+    "书签管理",
+    "新标签页",
+    "云盘同步",
+    "本地优先",
+    "AI自动分类"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
