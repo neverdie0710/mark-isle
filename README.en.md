@@ -2,6 +2,8 @@
 
 [简体中文](README.md) | English
 
+<img src="public/icons/icon128.png" alt="Mark Isle Logo" width="96" height="96">
+
 **Mark Isle** is a **local-first** Chrome bookmark manager and new tab dashboard. It replaces the new tab page with a customizable navigation board, keeps data local-first, syncs across devices through a user-owned cloud folder, and optionally uses an OpenAI-compatible LLM for bookmark classification.
 
 ## Overview

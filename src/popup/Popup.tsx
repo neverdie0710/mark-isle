@@ -3,6 +3,7 @@ import { seedIfEmpty } from '../data/db'
 import * as repo from '../data/repository'
 import { classifyBookmark } from '../ai/classifier'
 import { faviconUrl } from '../shared/favicon'
+import { APP_NAME, APP_NAME_EN, appIconUrl } from '../shared/brand'
 import type { NavPage, Section } from '../shared/types'
 
 interface Tab {
@@ -90,6 +91,14 @@ export default function Popup() {
 
   return (
     <div className="space-y-3 p-4">
+      <div className="flex items-center gap-2">
+        <img src={appIconUrl(48)} alt="" className="h-8 w-8 rounded-lg" />
+        <div className="min-w-0">
+          <div className="text-sm font-medium text-ink">{APP_NAME}</div>
+          <div className="text-[11px] text-muted">{APP_NAME_EN}</div>
+        </div>
+      </div>
+
       <div className="flex items-center gap-2">
         <img
           src={tab.favIconUrl || faviconUrl(tab.url)}

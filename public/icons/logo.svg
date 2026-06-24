@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Mark Isle logo">
+  <defs>
+    <linearGradient id="sky" x1="18" y1="12" x2="110" y2="118" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6ee7d8"/>
+      <stop offset="0.5" stop-color="#3c82f6"/>
+      <stop offset="1" stop-color="#26346f"/>
+    </linearGradient>
+    <linearGradient id="island" x1="40" y1="48" x2="91" y2="104" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff6c7"/>
+      <stop offset="1" stop-color="#f6b35f"/>
+    </linearGradient>
+    <linearGradient id="bookmark" x1="43" y1="22" x2="87" y2="92" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d9f5ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#10233f" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+
+  <rect width="128" height="128" rx="28" fill="url(#sky)"/>
+  <path d="M18 91c14-11 27-13 41-6 8 4 14 4 22-1 10-6 20-5 31 3v22H18V91z" fill="#ffffff" opacity="0.22"/>
+  <path d="M29 99c11-9 22-11 34-5 8 4 15 4 24-1 8-4 15-3 23 3" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" opacity="0.34"/>
+
+  <g filter="url(#shadow)">
+    <path d="M42 28c0-6 5-11 11-11h38c6 0 11 5 11 11v61c0 6-7 9-12 5L73 81 56 94c-5 4-14 1-14-6V28z" fill="#133256" opacity="0.22"/>
+    <path d="M35 24c0-7 5-12 12-12h34c7 0 12 5 12 12v67c0 6-7 10-12 6L64 84 47 97c-5 4-12 0-12-6V24z" fill="url(#bookmark)"/>
+    <path d="M49 32h30" stroke="#77a8ce" stroke-width="7" stroke-linecap="round"/>
+    <path d="M49 49h22" stroke="#99c9e6" stroke-width="7" stroke-linecap="round"/>
+    <path d="M35 72c9-7 19-10 30-7 10 3 18 1 28-5v31c0 6-7 10-12 6L64 84 47 97c-5 4-12 0-12-6V72z" fill="url(#island)"/>
+    <path d="M51 73c6-4 13-5 20-3" fill="none" stroke="#8f6d35" stroke-width="5" stroke-linecap="round" opacity="0.5"/>
+  </g>
+</svg>

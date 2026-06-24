@@ -2,6 +2,8 @@
 
 简体中文 | [English](README.en.md)
 
+<img src="public/icons/icon128.png" alt="签屿 Logo" width="96" height="96">
+
 **签屿（Mark Isle）** 是一个 **local-first** 的 Chrome 书签导航与新标签页管理扩展：覆盖新标签页，做成可自定义的导航看板，数据本地优先、多端靠云盘目录同步、可选接入 LLM 自动分类。
 
 ## 项目简介

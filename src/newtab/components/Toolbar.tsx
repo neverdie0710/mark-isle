@@ -1,5 +1,6 @@
 import type { NavPage } from '../../shared/types'
 import type { SyncStatus } from '../../data/fileSync'
+import { APP_NAME, APP_NAME_EN, appIconUrl } from '../../shared/brand'
 
 interface Props {
   pages: NavPage[]
@@ -42,8 +43,10 @@ export function Toolbar({
     <header className="sticky top-0 z-30 px-3 py-2 text-white">
       <div className="grid grid-cols-[minmax(0,1fr)_minmax(260px,520px)_minmax(0,1fr)] items-center gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="rounded-lg bg-black/30 px-3 py-1.5 text-sm font-medium backdrop-blur">
-            ☰ 页面
+          <span className="flex shrink-0 items-center gap-2 rounded-xl bg-black/30 px-3 py-1.5 text-sm font-medium backdrop-blur">
+            <img src={appIconUrl(48)} alt="" className="h-5 w-5 rounded-md" />
+            <span className="hidden sm:inline">{APP_NAME}</span>
+            <span className="sr-only">{APP_NAME_EN}</span>
           </span>
           <div className="flex min-w-0 items-center gap-1 overflow-x-auto">
             {pages.map((p) => (

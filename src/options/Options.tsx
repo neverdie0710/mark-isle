@@ -16,6 +16,7 @@ import {
   type BrowserBookmarkImportReport,
 } from '../ai/bookmarkImport'
 import { encryptSecret, decryptSecret } from '../shared/crypto'
+import { APP_NAME, APP_NAME_EN, appIconUrl } from '../shared/brand'
 
 const card = 'rounded-xl border border-line bg-white p-5'
 const input =
@@ -158,7 +159,13 @@ export default function Options() {
 
   return (
     <div className="mx-auto max-w-[720px] space-y-5 p-8">
-      <h1 className="text-xl font-medium text-ink">签屿设置</h1>
+      <div className="flex items-center gap-3">
+        <img src={appIconUrl(48)} alt="" className="h-10 w-10 rounded-xl" />
+        <div>
+          <h1 className="text-xl font-medium text-ink">{APP_NAME}设置</h1>
+          <p className="text-xs text-muted">{APP_NAME_EN}</p>
+        </div>
+      </div>
       {savedMsg && (
         <div className="rounded-lg bg-accent/10 px-4 py-2 text-sm text-accent">
           {savedMsg}
