@@ -4,6 +4,7 @@ import type {
   Section,
   Bookmark,
   Category,
+  UploadedIcon,
   Meta,
 } from '../shared/types'
 import { DEFAULT_APPEARANCE } from '../shared/types'
@@ -20,6 +21,7 @@ export class MarkIsleDB extends Dexie {
   sections!: Table<Section, string>
   bookmarks!: Table<Bookmark, string>
   categories!: Table<Category, string>
+  uploadedIcons!: Table<UploadedIcon, string>
   meta!: Table<Meta, string>
   kv!: Table<KV, string>
 
@@ -67,6 +69,16 @@ export class MarkIsleDB extends Dexie {
             .put({ ...meta, lamportClock: Math.max(meta.lamportClock ?? 0, clock) })
         }
       })
+    // v3：本地上传的网站图标库，可在书签编辑器中复用
+    this.version(3).stores({
+      navPages: 'id, order, updatedAt, lamport, deleted',
+      sections: 'id, pageId, order, updatedAt, lamport, deleted',
+      bookmarks: 'id, sectionId, order, updatedAt, lamport, deleted, categoryId',
+      categories: 'id, updatedAt, lamport, deleted',
+      uploadedIcons: 'id, updatedAt, lamport, deleted',
+      meta: 'key',
+      kv: 'key',
+    })
   }
 }
 

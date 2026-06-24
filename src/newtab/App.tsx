@@ -11,7 +11,7 @@ import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
 import { useStore } from '../store/useStore'
 import * as repo from '../data/repository'
 import { sync as runSync, pickSyncDirectory } from '../data/fileSync'
-import type { Bookmark, Section as SectionT } from '../shared/types'
+import type { Bookmark, Section as SectionT, UploadedIcon } from '../shared/types'
 import { Toolbar } from './components/Toolbar'
 import { Section } from './components/Section'
 import { BookmarkEditor } from './components/BookmarkEditor'
@@ -45,6 +45,7 @@ export default function App() {
   const [editorOpen, setEditorOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Bookmark | null>(null)
   const [targetSectionId, setTargetSectionId] = useState<string | null>(null)
+  const [uploadedIcons, setUploadedIcons] = useState<UploadedIcon[]>([])
 
   useEffect(() => {
     init()
@@ -86,12 +87,30 @@ export default function App() {
   const openAdd = (sectionId: string) => {
     setTargetSectionId(sectionId)
     setEditTarget(null)
+    void loadUploadedIcons()
     setEditorOpen(true)
   }
   const openEdit = (bm: Bookmark) => {
     setTargetSectionId(bm.sectionId)
     setEditTarget(bm)
+    void loadUploadedIcons()
     setEditorOpen(true)
+  }
+  const loadUploadedIcons = async () => {
+    setUploadedIcons(await repo.listUploadedIcons())
+  }
+  const uploadIcon = async (data: {
+    name: string
+    dataUrl: string
+    mimeType: string
+  }) => {
+    const icon = await repo.createUploadedIcon(data.name, data.dataUrl, data.mimeType)
+    await loadUploadedIcons()
+    return icon
+  }
+  const deleteUploadedIcon = async (id: string) => {
+    await repo.deleteUploadedIcon(id)
+    await loadUploadedIcons()
   }
   const saveBookmark = async (data: {
     title: string
@@ -293,7 +312,10 @@ export default function App() {
         <BookmarkEditor
           open={editorOpen}
           bookmark={editTarget}
+          uploadedIcons={uploadedIcons}
           onClose={() => setEditorOpen(false)}
+          onUploadIcon={uploadIcon}
+          onDeleteUploadedIcon={deleteUploadedIcon}
           onSave={saveBookmark}
         />
       </div>

@@ -5,6 +5,7 @@ import type {
   Section,
   Bookmark,
   Category,
+  UploadedIcon,
   EntityKind,
 } from '../shared/types'
 
@@ -18,7 +19,7 @@ import type {
  * 删除一律软删（deleted=true），保证删除能在多端传播。
  */
 
-type AnyEntity = NavPage | Section | Bookmark | Category
+type AnyEntity = NavPage | Section | Bookmark | Category | UploadedIcon
 
 export interface BookmarkImportItem {
   title: string
@@ -38,6 +39,8 @@ function tableOf(kind: EntityKind) {
       return db.bookmarks
     case 'categories':
       return db.categories
+    case 'uploadedIcons':
+      return db.uploadedIcons
   }
 }
 
@@ -99,6 +102,11 @@ export async function listCategories(): Promise<Category[]> {
   return (await db.categories.filter((c) => !c.deleted).toArray()).sort((a, b) =>
     a.name.localeCompare(b.name),
   )
+}
+
+export async function listUploadedIcons(): Promise<UploadedIcon[]> {
+  const all = await db.uploadedIcons.filter((i) => !i.deleted).toArray()
+  return all.sort((a, b) => b.updatedAt - a.updatedAt)
 }
 
 // ---------- NavPage ----------
@@ -287,7 +295,7 @@ export async function moveBookmark(id: string, toSectionId: string, toOrder: num
   notifyChanged()
 }
 
-type OrderedKind = Exclude<EntityKind, 'categories'>
+type OrderedKind = Exclude<EntityKind, 'categories' | 'uploadedIcons'>
 
 /** 批量重排：传入有序 id 列表，按索引写回 order */
 export async function reorder(kind: OrderedKind, orderedIds: string[]) {
@@ -328,4 +336,34 @@ export async function upsertCategory(name: string, color?: string): Promise<Cate
   await db.categories.put(cat)
   notifyChanged()
   return cat
+}
+
+// ---------- UploadedIcon ----------
+
+export async function createUploadedIcon(
+  name: string,
+  dataUrl: string,
+  mimeType: string,
+): Promise<UploadedIcon> {
+  const icon = await stamp<UploadedIcon>({
+    id: uuid(),
+    name,
+    dataUrl,
+    mimeType,
+    updatedAt: 0,
+    lamport: 0,
+    modifiedBy: '',
+    version: 0,
+    deleted: false,
+  })
+  await db.uploadedIcons.put(icon)
+  notifyChanged()
+  return icon
+}
+
+export async function deleteUploadedIcon(id: string) {
+  const cur = await db.uploadedIcons.get(id)
+  if (!cur) return
+  await db.uploadedIcons.put(await stamp(cur, { deleted: true }))
+  notifyChanged()
 }

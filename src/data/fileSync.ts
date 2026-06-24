@@ -6,6 +6,7 @@ import type {
   Section,
   Bookmark,
   Category,
+  UploadedIcon,
 } from '../shared/types'
 import { now } from '../shared/id'
 
@@ -93,11 +94,12 @@ async function getLegacyAppDir(
 
 async function readLocalSnapshot(): Promise<DeviceSnapshot> {
   const meta = await getMeta()
-  const [navPages, sections, bookmarks, categories] = await Promise.all([
+  const [navPages, sections, bookmarks, categories, uploadedIcons] = await Promise.all([
     db.navPages.toArray(),
     db.sections.toArray(),
     db.bookmarks.toArray(),
     db.categories.toArray(),
+    db.uploadedIcons.toArray(),
   ])
   return {
     deviceId: meta.deviceId,
@@ -107,6 +109,7 @@ async function readLocalSnapshot(): Promise<DeviceSnapshot> {
     sections,
     bookmarks,
     categories,
+    uploadedIcons,
   }
 }
 
@@ -203,6 +206,10 @@ async function applyMerge(local: DeviceSnapshot, remotes: DeviceSnapshot[]) {
     local.categories,
     remotes.map((r) => r.categories ?? []),
   )
+  const ui = mergeWithLocal<UploadedIcon>(
+    local.uploadedIcons ?? [],
+    remotes.map((r) => r.uploadedIcons ?? []),
+  )
 
   await db.transaction(
     'rw',
@@ -210,11 +217,13 @@ async function applyMerge(local: DeviceSnapshot, remotes: DeviceSnapshot[]) {
     db.sections,
     db.bookmarks,
     db.categories,
+    db.uploadedIcons,
     async () => {
       if (np.changed.length) await db.navPages.bulkPut(np.changed)
       if (se.changed.length) await db.sections.bulkPut(se.changed)
       if (bm.changed.length) await db.bookmarks.bulkPut(bm.changed)
       if (ca.changed.length) await db.categories.bulkPut(ca.changed)
+      if (ui.changed.length) await db.uploadedIcons.bulkPut(ui.changed)
     },
   )
 
@@ -224,6 +233,7 @@ async function applyMerge(local: DeviceSnapshot, remotes: DeviceSnapshot[]) {
     se.maxLamport,
     bm.maxLamport,
     ca.maxLamport,
+    ui.maxLamport,
   )
   await observeLamport(maxLamport)
 }

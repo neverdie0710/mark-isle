@@ -55,6 +55,13 @@ export interface Category extends SyncFields {
   color?: string
 }
 
+export interface UploadedIcon extends SyncFields {
+  id: string
+  name: string
+  dataUrl: string
+  mimeType: string
+}
+
 export interface LLMConfig {
   enabled: boolean
   endpoint: string
@@ -92,7 +99,12 @@ export interface Meta {
   appearance: AppearanceConfig
 }
 
-export type EntityKind = 'navPages' | 'sections' | 'bookmarks' | 'categories'
+export type EntityKind =
+  | 'navPages'
+  | 'sections'
+  | 'bookmarks'
+  | 'categories'
+  | 'uploadedIcons'
 
 export interface DeviceSnapshot {
   deviceId: string
@@ -102,6 +114,7 @@ export interface DeviceSnapshot {
   sections: Section[]
   bookmarks: Bookmark[]
   categories: Category[]
+  uploadedIcons?: UploadedIcon[]
 }
 
 export interface BackupFile extends DeviceSnapshot {
