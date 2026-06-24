@@ -97,9 +97,9 @@ export function Toolbar({
           <button
             className="rounded-full bg-black/25 px-3 py-1.5 text-sm text-white backdrop-blur hover:bg-black/35"
             onClick={onAddSection}
-            title="新增分类区块"
+            title="新增区域"
           >
-            + 区块
+            + 区域
           </button>
           <button
             className={`rounded-full px-3 py-1.5 text-xs backdrop-blur ${sync.cls}`}
