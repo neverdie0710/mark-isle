@@ -1,8 +1,8 @@
 # 签屿 · Mark Isle
 
-**签屿（Mark Isle）** 是一个 **local-first** 的 Chrome 书签导航与新标签页管理扩展：覆盖新标签页，做成可自定义的导航看板（参考 start.me），数据本地优先、多端靠云盘目录同步、可选接入 LLM 自动分类。
+简体中文 | [English](README.en.md)
 
-Mark Isle is a local-first Chrome bookmark manager and new tab dashboard with cloud-folder sync, offline-first storage, drag-and-drop navigation boards, and optional AI bookmark classification.
+**签屿（Mark Isle）** 是一个 **local-first** 的 Chrome 书签导航与新标签页管理扩展：覆盖新标签页，做成可自定义的导航看板，数据本地优先、多端靠云盘目录同步、可选接入 LLM 自动分类。
 
 ## 项目简介
 
@@ -12,9 +12,7 @@ Mark Isle is a local-first Chrome bookmark manager and new tab dashboard with cl
 
 ## 关键词
 
-中文：Chrome 书签插件、书签管理、新标签页、导航页、网址导航、个人导航、书签同步、云盘同步、本地优先、离线优先、AI 自动分类、浏览器扩展、效率工具、个人知识管理。
-
-English: Chrome extension, bookmark manager, new tab dashboard, start page, local-first, offline-first, cloud sync, File System Access API, AI bookmark classification, React, Vite, TypeScript, Tailwind, Manifest V3.
+Chrome 书签插件、书签管理、新标签页、导航页、网址导航、个人导航、书签同步、云盘同步、本地优先、离线优先、AI 自动分类、浏览器扩展、效率工具、个人知识管理。
 
 ## 适合谁
 
@@ -25,9 +23,9 @@ English: Chrome extension, bookmark manager, new tab dashboard, start page, loca
 ## 核心特性
 
 - **离线优先**：所有数据存在浏览器本地 IndexedDB，是唯一事实来源。断网、弱网、云盘故障都不影响使用与查找。
-- **导航看板**：多个导航页（标签）→ 每页多个区域（自定义标题/Logo/颜色）→ 每个区域内书签卡片（图标/标题/备注），支持拖拽排序与跨区域移动。
-- **云盘目录同步（无中心化服务）**：用 File System Access API 授权一个云盘本地同步文件夹（iCloud Drive / 坚果云 / Dropbox / OneDrive 等任意），扩展把数据写成 JSON，由云盘客户端负责跨设备搬运。每台设备只写自己的 `device-<id>.json`，读取时本地合并，**不会出现 iCloud「冲突副本」丢数据**。
-- **快速收藏**：工具栏弹窗、右键菜单、快捷键（默认 ⌘⇧S / Ctrl+Shift+S）一键收藏当前页。
+- **导航看板**：多个导航页（标签） -> 每页多个区域（自定义标题/Logo/颜色） -> 每个区域内书签卡片（图标/标题/备注），支持拖拽排序与跨区域移动。
+- **云盘目录同步（无中心化服务）**：用 File System Access API 授权一个云盘本地同步文件夹（iCloud Drive / 坚果云 / Dropbox / OneDrive 等任意），扩展把数据写成 JSON，由云盘客户端负责跨设备搬运。每台设备只写自己的 `device-<id>.json`，读取时本地合并，避免云盘冲突副本导致数据丢失。
+- **快速收藏**：工具栏弹窗、右键菜单、快捷键（默认 `Command+Shift+S` / `Ctrl+Shift+S`）一键收藏当前页。
 - **AI 自动分类**：设置页填任意 OpenAI 兼容接口（自带 Key），新增书签时自动给出分类；未配置/失败/离线时降级为本地域名+关键词规则，始终可用。
 - **备份与恢复**：一键导出/导入 JSON，导入按版本+时间智能合并。
 
@@ -70,7 +68,7 @@ npm run test     # 跑合并逻辑单测
 
 ## 目录结构
 
-```
+```text
 mark-isle/
 ├─ manifest.config.ts     # MV3 manifest
 ├─ src/
@@ -78,9 +76,9 @@ mark-isle/
 │  ├─ popup/              # 工具栏快速收藏
 │  ├─ options/            # 设置页：云盘授权 / LLM / 导入导出
 │  ├─ background/         # service worker：右键菜单 / 快捷键收藏
-│  ├─ data/              # db / repository / fileSync / merge / backup
-│  ├─ ai/                # classifier(LLM) / ruleFallback(本地规则)
-│  ├─ store/             # Zustand
-│  └─ shared/            # types / id / favicon / crypto
-└─ test/                 # merge 合并逻辑单测
+│  ├─ data/               # db / repository / fileSync / merge / backup
+│  ├─ ai/                 # classifier(LLM) / ruleFallback(本地规则)
+│  ├─ store/              # Zustand
+│  └─ shared/             # types / id / favicon / crypto
+└─ test/                  # merge 合并逻辑单测
 ```
