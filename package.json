@@ -1,7 +1,7 @@
 {
   "name": "mark-isle",
   "version": "0.1.0",
-  "description": "Local-first Chrome bookmark manager and new tab dashboard with cloud-folder sync and AI classification.",
+  "description": "签屿 Mark Isle：本地优先的 Chrome 书签管理与新标签页导航扩展，支持云盘同步和 AI 自动分类。",
   "type": "module",
   "repository": {
     "type": "git",
@@ -27,9 +27,14 @@
     "typescript",
     "tailwindcss",
     "书签管理",
+    "Chrome书签插件",
     "新标签页",
+    "网址导航",
+    "个人导航",
+    "书签同步",
     "云盘同步",
     "本地优先",
+    "离线优先",
     "AI自动分类"
   ],
   "scripts": {

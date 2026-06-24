@@ -4,9 +4,17 @@
 
 Mark Isle is a local-first Chrome bookmark manager and new tab dashboard with cloud-folder sync, offline-first storage, drag-and-drop navigation boards, and optional AI bookmark classification.
 
+## 项目简介
+
+签屿是一个面向个人知识入口和日常效率场景的 Chrome 书签管理工具。它把浏览器新标签页变成可拖拽、可分区、可多页管理的导航看板，让常用网站、工作链接、学习资料和临时收藏都能沉淀在一个本地优先的空间里。
+
+项目重点解决三个问题：书签难整理、多设备同步不透明、第三方服务依赖过重。签屿使用 IndexedDB 保存本地数据，通过 File System Access API 把设备快照写入用户自己选择的云盘文件夹，再由 iCloud Drive、坚果云、Dropbox、OneDrive 等云盘客户端同步；没有中心化后端，离线也能正常使用。对于大量存量书签或日常新增链接，签屿还支持接入 OpenAI 兼容接口进行 AI 自动分类，并在未配置 AI 时回退到本地规则分类。
+
 ## 关键词
 
-Chrome extension, bookmark manager, new tab dashboard, local-first, offline-first, cloud sync, File System Access API, AI bookmark classification, React, Vite, TypeScript, Tailwind, Manifest V3, 书签管理, 新标签页, 导航页, 云盘同步, 本地优先, AI 自动分类。
+中文：Chrome 书签插件、书签管理、新标签页、导航页、网址导航、个人导航、书签同步、云盘同步、本地优先、离线优先、AI 自动分类、浏览器扩展、效率工具、个人知识管理。
+
+English: Chrome extension, bookmark manager, new tab dashboard, start page, local-first, offline-first, cloud sync, File System Access API, AI bookmark classification, React, Vite, TypeScript, Tailwind, Manifest V3.
 
 ## 适合谁
 
