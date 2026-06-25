@@ -4,6 +4,10 @@
 
 <img src="public/icons/icon128.png" alt="Mark Isle Logo" width="96" height="96">
 
+> A local-first **Chrome bookmark manager and new tab dashboard** for organizing links, syncing through your own cloud folder, using sticky-note style sections, and classifying bookmarks with optional AI.
+
+[Download latest release](https://github.com/neverdie0710/mark-isle/releases/latest) · [Chrome Web Store release notes](docs/chrome-web-store-release.md)
+
 **Mark Isle** is a **local-first** Chrome bookmark manager and new tab dashboard. It replaces the new tab page with a customizable navigation board, keeps data local-first, syncs across devices through a user-owned cloud folder, and optionally uses an OpenAI-compatible LLM for bookmark classification.
 
 ## Overview
