@@ -26,7 +26,7 @@ export default defineManifest({
     service_worker: 'src/background/index.ts',
     type: 'module',
   },
-  permissions: ['tabs', 'contextMenus', 'storage', 'bookmarks'],
+  permissions: ['tabs', 'contextMenus', 'bookmarks'],
   commands: {
     'save-current-tab': {
       suggested_key: { default: 'Ctrl+Shift+S', mac: 'Command+Shift+S' },

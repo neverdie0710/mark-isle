@@ -27,6 +27,10 @@ export interface Section extends SyncFields {
   title: string
   logo?: string
   color?: string
+  backgroundColor?: string
+  bookmarkDisplayMode?: BookmarkDisplayMode
+  bookmarkIconSize?: BookmarkIconSize
+  showBookmarkLabels?: boolean
   /** 区块内部书签列数，旧数据兼容字段；新版会根据区块宽度自适应。 */
   columns: number
   /** 旧版宽度等级兼容字段。 */
@@ -70,6 +74,8 @@ export interface LLMConfig {
 }
 
 export type BackgroundMode = 'cover' | 'contain' | 'repeat'
+export type BookmarkDisplayMode = 'list' | 'icon'
+export type BookmarkIconSize = 'small' | 'medium' | 'large'
 
 export interface AppearanceConfig {
   /** 背景图 URL 或本地图片 data URL。为空时使用默认渐变背景。 */
@@ -97,6 +103,19 @@ export interface Meta {
   lamportClock: number
   llmConfig: LLMConfig
   appearance: AppearanceConfig
+  /** 外观设置的 LWW 时间戳，用于跨设备同步。 */
+  appearanceUpdatedAt: number
+  /** 外观设置的 Lamport 时钟，用于同毫秒/时钟回拨时冲突裁决。 */
+  appearanceLamport: number
+  /** 最后修改外观设置的设备 id。 */
+  appearanceModifiedBy: string
+  /** 外观设置本机编辑计数，仅展示/调试用，不参与跨设备比较。 */
+  appearanceVersion: number
+}
+
+export interface SyncedAppearance extends SyncFields {
+  id: 'appearance'
+  config: AppearanceConfig
 }
 
 export type EntityKind =
@@ -110,6 +129,7 @@ export interface DeviceSnapshot {
   deviceId: string
   deviceLabel: string
   exportedAt: number
+  appearance?: SyncedAppearance
   navPages: NavPage[]
   sections: Section[]
   bookmarks: Bookmark[]

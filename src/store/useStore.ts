@@ -105,6 +105,8 @@ export const useStore = create<AppState>((set, get) => ({
     const status = await sync({ requestPermission })
     set({ syncStatus: status })
     if (status === 'ok') {
+      const meta = await getMeta()
+      set({ appearance: meta.appearance })
       await get().refresh()
     }
   },

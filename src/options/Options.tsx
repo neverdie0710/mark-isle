@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { getMeta, updateMeta } from '../data/db'
-import { DEFAULT_APPEARANCE, type AppearanceConfig, type BackgroundMode } from '../shared/types'
+import { getMeta, updateMeta, updateAppearance as saveAppearanceConfig } from '../data/db'
+import {
+  DEFAULT_APPEARANCE,
+  type AppearanceConfig,
+  type BackgroundMode,
+} from '../shared/types'
 import {
   isFileSystemAccessSupported,
   pickSyncDirectory,
@@ -90,13 +94,13 @@ export default function Options() {
   }
 
   const saveAppearance = async () => {
-    await updateMeta({ appearance })
+    await saveAppearanceConfig(appearance)
     setSavedMsg('外观设置已保存，刷新新标签页后生效')
     setTimeout(() => setSavedMsg(''), 2500)
   }
   const resetAppearance = async () => {
     setAppearance(DEFAULT_APPEARANCE)
-    await updateMeta({ appearance: DEFAULT_APPEARANCE })
+    await saveAppearanceConfig(DEFAULT_APPEARANCE)
     setSavedMsg('外观设置已重置')
     setTimeout(() => setSavedMsg(''), 2500)
   }

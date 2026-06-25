@@ -1,12 +1,19 @@
-import { db, getMeta, updateMeta, observeLamport } from './db'
-import { mergeWithLocal } from './merge'
+import {
+  db,
+  getMeta,
+  updateMeta,
+  observeLamport,
+  metaToSyncedAppearance,
+  applySyncedAppearance,
+} from './db'
+import { mergeWithLocal, pickNewer } from './merge'
 import type {
   DeviceSnapshot,
   NavPage,
   Section,
   Bookmark,
   Category,
-  UploadedIcon,
+  SyncedAppearance,
 } from '../shared/types'
 import { now } from '../shared/id'
 
@@ -94,22 +101,21 @@ async function getLegacyAppDir(
 
 async function readLocalSnapshot(): Promise<DeviceSnapshot> {
   const meta = await getMeta()
-  const [navPages, sections, bookmarks, categories, uploadedIcons] = await Promise.all([
+  const [navPages, sections, bookmarks, categories] = await Promise.all([
     db.navPages.toArray(),
     db.sections.toArray(),
     db.bookmarks.toArray(),
     db.categories.toArray(),
-    db.uploadedIcons.toArray(),
   ])
   return {
     deviceId: meta.deviceId,
     deviceLabel: meta.deviceLabel,
     exportedAt: now(),
+    appearance: metaToSyncedAppearance(meta),
     navPages,
     sections,
     bookmarks,
     categories,
-    uploadedIcons,
   }
 }
 
@@ -190,6 +196,17 @@ export async function sync(options: { requestPermission?: boolean } = {}): Promi
 }
 
 async function applyMerge(local: DeviceSnapshot, remotes: DeviceSnapshot[]) {
+  const localAppearance = local.appearance
+  const remoteAppearances = remotes
+    .map((r) => r.appearance)
+    .filter((a): a is SyncedAppearance => Boolean(a))
+  const appearanceCandidates = [localAppearance, ...remoteAppearances].filter(
+    (a): a is SyncedAppearance => Boolean(a),
+  )
+  const latestAppearance = appearanceCandidates.length
+    ? appearanceCandidates.reduce((latest, item) => pickNewer(latest, item))
+    : null
+
   const np = mergeWithLocal<NavPage>(
     local.navPages,
     remotes.map((r) => r.navPages ?? []),
@@ -206,10 +223,6 @@ async function applyMerge(local: DeviceSnapshot, remotes: DeviceSnapshot[]) {
     local.categories,
     remotes.map((r) => r.categories ?? []),
   )
-  const ui = mergeWithLocal<UploadedIcon>(
-    local.uploadedIcons ?? [],
-    remotes.map((r) => r.uploadedIcons ?? []),
-  )
 
   await db.transaction(
     'rw',
@@ -217,15 +230,20 @@ async function applyMerge(local: DeviceSnapshot, remotes: DeviceSnapshot[]) {
     db.sections,
     db.bookmarks,
     db.categories,
-    db.uploadedIcons,
     async () => {
       if (np.changed.length) await db.navPages.bulkPut(np.changed)
       if (se.changed.length) await db.sections.bulkPut(se.changed)
       if (bm.changed.length) await db.bookmarks.bulkPut(bm.changed)
       if (ca.changed.length) await db.categories.bulkPut(ca.changed)
-      if (ui.changed.length) await db.uploadedIcons.bulkPut(ui.changed)
     },
   )
+
+  if (
+    latestAppearance
+    && (!localAppearance || pickNewer(localAppearance, latestAppearance) !== localAppearance)
+  ) {
+    await applySyncedAppearance(latestAppearance)
+  }
 
   // 用远端见过的最大 lamport 抬高本机逻辑时钟，保证后续本地写入单调递增、不会再被旧值压制
   const maxLamport = Math.max(
@@ -233,7 +251,7 @@ async function applyMerge(local: DeviceSnapshot, remotes: DeviceSnapshot[]) {
     se.maxLamport,
     bm.maxLamport,
     ca.maxLamport,
-    ui.maxLamport,
+    latestAppearance?.lamport ?? 0,
   )
   await observeLamport(maxLamport)
 }

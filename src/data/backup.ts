@@ -1,5 +1,10 @@
-import { db, getMeta } from './db'
-import { mergeWithLocal } from './merge'
+import {
+  db,
+  getMeta,
+  metaToSyncedAppearance,
+  applySyncedAppearance,
+} from './db'
+import { mergeWithLocal, pickNewer } from './merge'
 import type {
   BackupFile,
   NavPage,
@@ -28,6 +33,7 @@ export async function exportBackup(): Promise<BackupFile> {
     deviceId: meta.deviceId,
     deviceLabel: meta.deviceLabel,
     exportedAt: now(),
+    appearance: metaToSyncedAppearance(meta),
     navPages,
     sections,
     bookmarks,
@@ -68,6 +74,11 @@ export async function importBackup(json: string): Promise<{ added: number }> {
   const bm = mergeWithLocal<Bookmark>(bookmarks, [data.bookmarks ?? []])
   const ca = mergeWithLocal<Category>(categories, [data.categories ?? []])
   const ui = mergeWithLocal<UploadedIcon>(uploadedIcons, [data.uploadedIcons ?? []])
+  const localAppearance = metaToSyncedAppearance(await getMeta())
+  const remoteAppearance = data.appearance
+  const shouldApplyAppearance =
+    Boolean(remoteAppearance)
+    && pickNewer(localAppearance, remoteAppearance!) !== localAppearance
 
   await db.transaction(
     'rw',
@@ -84,6 +95,9 @@ export async function importBackup(json: string): Promise<{ added: number }> {
       await db.uploadedIcons.bulkPut(ui.changed)
     },
   )
+  if (shouldApplyAppearance && remoteAppearance) {
+    await applySyncedAppearance(remoteAppearance)
+  }
 
   return {
     added:
@@ -91,6 +105,7 @@ export async function importBackup(json: string): Promise<{ added: number }> {
       se.changed.length +
       bm.changed.length +
       ca.changed.length +
-      ui.changed.length,
+      ui.changed.length +
+      (shouldApplyAppearance ? 1 : 0),
   }
 }

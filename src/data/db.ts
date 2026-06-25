@@ -6,6 +6,8 @@ import type {
   Category,
   UploadedIcon,
   Meta,
+  AppearanceConfig,
+  SyncedAppearance,
 } from '../shared/types'
 import { DEFAULT_APPEARANCE } from '../shared/types'
 import { uuid, shortId, now } from '../shared/id'
@@ -98,13 +100,24 @@ export async function getMeta(): Promise<Meta> {
       lamportClock: 0,
       llmConfig: { enabled: false, endpoint: '', model: '' },
       appearance: DEFAULT_APPEARANCE,
+      appearanceUpdatedAt: 0,
+      appearanceLamport: 0,
+      appearanceModifiedBy: '',
+      appearanceVersion: 0,
     }
     await db.meta.put(m)
-  } else if (!m.appearance) {
-    m = { ...m, appearance: DEFAULT_APPEARANCE }
-    await db.meta.put(m)
   } else {
-    m = { ...m, appearance: { ...DEFAULT_APPEARANCE, ...m.appearance } }
+    const normalized = normalizeMeta(m)
+    if (
+      normalized.appearance !== m.appearance
+      || normalized.appearanceUpdatedAt !== m.appearanceUpdatedAt
+      || normalized.appearanceLamport !== m.appearanceLamport
+      || normalized.appearanceModifiedBy !== m.appearanceModifiedBy
+      || normalized.appearanceVersion !== m.appearanceVersion
+    ) {
+      await db.meta.put(normalized)
+    }
+    m = normalized
   }
   return m
 }
@@ -114,6 +127,64 @@ export async function updateMeta(patch: Partial<Meta>): Promise<Meta> {
   const next = { ...m, ...patch, key: META_KEY }
   await db.meta.put(next)
   return next
+}
+
+export async function updateAppearance(
+  appearance: AppearanceConfig,
+): Promise<Meta> {
+  const m = await getMeta()
+  const lamport = await nextLamport()
+  const deviceId = await currentDeviceId()
+  const next = {
+    ...m,
+    appearance: { ...DEFAULT_APPEARANCE, ...appearance },
+    appearanceUpdatedAt: now(),
+    appearanceLamport: lamport,
+    appearanceModifiedBy: deviceId,
+    appearanceVersion: (m.appearanceVersion ?? 0) + 1,
+  }
+  await db.meta.put(next)
+  return next
+}
+
+export function metaToSyncedAppearance(meta: Meta): SyncedAppearance {
+  const normalized = normalizeMeta(meta)
+  return {
+    id: 'appearance',
+    config: normalized.appearance,
+    updatedAt: normalized.appearanceUpdatedAt,
+    lamport: normalized.appearanceLamport,
+    modifiedBy: normalized.appearanceModifiedBy,
+    version: normalized.appearanceVersion,
+    deleted: false,
+  }
+}
+
+export async function applySyncedAppearance(
+  appearance: SyncedAppearance,
+): Promise<void> {
+  const m = await getMeta()
+  await db.meta.put(
+    normalizeMeta({
+      ...m,
+      appearance: { ...DEFAULT_APPEARANCE, ...appearance.config },
+      appearanceUpdatedAt: appearance.updatedAt,
+      appearanceLamport: appearance.lamport,
+      appearanceModifiedBy: appearance.modifiedBy,
+      appearanceVersion: appearance.version,
+    }),
+  )
+}
+
+function normalizeMeta(meta: Meta): Meta {
+  return {
+    ...meta,
+    appearance: { ...DEFAULT_APPEARANCE, ...(meta.appearance ?? {}) },
+    appearanceUpdatedAt: meta.appearanceUpdatedAt ?? 0,
+    appearanceLamport: meta.appearanceLamport ?? 0,
+    appearanceModifiedBy: meta.appearanceModifiedBy ?? meta.deviceId ?? '',
+    appearanceVersion: meta.appearanceVersion ?? 0,
+  }
 }
 
 /**

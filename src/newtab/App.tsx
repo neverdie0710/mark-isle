@@ -166,9 +166,20 @@ export default function App() {
     await repo.updateSection(id, { title })
     await refresh()
   }
-  const updateSectionLayout = async (
+  const updateSection = async (
     id: string,
-    patch: Partial<Pick<SectionT, 'columns' | 'layoutW' | 'layoutH'>>,
+    patch: Partial<
+      Pick<
+        SectionT,
+        | 'columns'
+        | 'layoutW'
+        | 'layoutH'
+        | 'bookmarkDisplayMode'
+        | 'bookmarkIconSize'
+        | 'showBookmarkLabels'
+        | 'backgroundColor'
+      >
+    >,
   ) => {
     await repo.updateSection(id, patch)
     await refresh()
@@ -299,7 +310,7 @@ export default function App() {
                       onEditBookmark={openEdit}
                       onDeleteBookmark={deleteBookmark}
                       onRenameSection={renameSection}
-                      onUpdateSectionLayout={updateSectionLayout}
+                      onUpdateSection={updateSection}
                       onDeleteSection={deleteSection}
                     />
                   ))}
