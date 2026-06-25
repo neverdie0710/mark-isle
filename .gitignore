@@ -12,3 +12,5 @@ tsconfig.tsbuildinfo
 *.key
 *.p12
 *.pfx
+release/*.zip
+release/*.crx
