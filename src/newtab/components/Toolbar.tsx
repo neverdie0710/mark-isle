@@ -1,6 +1,7 @@
 import type { NavPage } from '../../shared/types'
 import type { SyncStatus } from '../../data/fileSync'
 import { APP_NAME, APP_NAME_EN, appIconUrl } from '../../shared/brand'
+import { useI18n } from '../../shared/useI18n'
 
 interface Props {
   pages: NavPage[]
@@ -17,11 +18,18 @@ interface Props {
   onOpenOptions: () => void
 }
 
-const SYNC_LABEL: Record<SyncStatus, { text: string; cls: string }> = {
-  ok: { text: '已同步', cls: 'bg-emerald-500/90 text-white' },
-  unconfigured: { text: '未同步', cls: 'bg-black/25 text-white' },
-  'permission-needed': { text: '需授权', cls: 'bg-amber-500/90 text-white' },
-  error: { text: '不可用', cls: 'bg-red-500/90 text-white' },
+const SYNC_CLASS: Record<SyncStatus, string> = {
+  ok: 'bg-emerald-500/90 text-white',
+  unconfigured: 'bg-black/25 text-white',
+  'permission-needed': 'bg-amber-500/90 text-white',
+  error: 'bg-red-500/90 text-white',
+}
+
+const SYNC_KEY: Record<SyncStatus, 'synced' | 'unsynced' | 'permissionNeeded' | 'unavailable'> = {
+  ok: 'synced',
+  unconfigured: 'unsynced',
+  'permission-needed': 'permissionNeeded',
+  error: 'unavailable',
 }
 
 export function Toolbar({
@@ -38,7 +46,7 @@ export function Toolbar({
   onSyncClick,
   onOpenOptions,
 }: Props) {
-  const sync = SYNC_LABEL[syncStatus]
+  const { t } = useI18n()
   return (
     <header className="sticky top-0 z-30 px-3 py-2 text-white">
       <div className="grid grid-cols-[minmax(0,1fr)_minmax(260px,520px)_minmax(0,1fr)] items-center gap-3">
@@ -59,7 +67,7 @@ export function Toolbar({
                 }`}
                 onClick={() => onSelectPage(p.id)}
                 onDoubleClick={() => onRenamePage(p.id)}
-                title="双击重命名"
+                title={t('doubleClickRename')}
               >
                 {p.title}
               </button>
@@ -67,7 +75,7 @@ export function Toolbar({
             <button
               className="shrink-0 rounded-full bg-black/25 px-2.5 py-1.5 text-sm text-white backdrop-blur hover:bg-black/35"
               onClick={onAddPage}
-              title="新建导航页"
+              title={t('newPage')}
             >
               +
             </button>
@@ -75,9 +83,9 @@ export function Toolbar({
               <button
                 className="shrink-0 rounded-lg bg-black/20 px-2 py-1.5 text-xs text-white/75 backdrop-blur hover:bg-red-500/80 hover:text-white"
                 onClick={() => onDeletePage(activePageId)}
-                title="删除当前导航页"
+                title={t('deleteCurrentPage')}
               >
-                删除页
+                {t('deletePage')}
               </button>
             )}
           </div>
@@ -87,7 +95,7 @@ export function Toolbar({
           <span className="text-sm">⌕</span>
           <input
             className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted"
-            placeholder="搜索书签或网址"
+            placeholder={t('searchPlaceholder')}
             value={search}
             onChange={(e) => onSearch(e.target.value)}
           />
@@ -97,23 +105,23 @@ export function Toolbar({
           <button
             className="rounded-full bg-black/25 px-3 py-1.5 text-sm text-white backdrop-blur hover:bg-black/35"
             onClick={onAddSection}
-            title="新增区域"
+            title={t('addSectionTitle')}
           >
-            + 区域
+            {t('addSection')}
           </button>
           <button
-            className={`rounded-full px-3 py-1.5 text-xs backdrop-blur ${sync.cls}`}
+            className={`rounded-full px-3 py-1.5 text-xs backdrop-blur ${SYNC_CLASS[syncStatus]}`}
             onClick={onSyncClick}
-            title="点击同步 / 连接云盘目录"
+            title={t('syncTitle')}
           >
-            ● {sync.text}
+            ● {t(SYNC_KEY[syncStatus])}
           </button>
           <button
             className="rounded-full bg-black/25 px-3 py-1.5 text-sm text-white backdrop-blur hover:bg-black/35"
             onClick={onOpenOptions}
-            title="背景、同步和 AI 设置"
+            title={t('settingsTitle')}
           >
-            设置
+            {t('settings')}
           </button>
         </div>
       </div>

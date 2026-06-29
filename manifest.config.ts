@@ -2,9 +2,10 @@ import { defineManifest } from '@crxjs/vite-plugin'
 
 export default defineManifest({
   manifest_version: 3,
-  name: '签屿 · Mark Isle',
-  version: '0.1.0',
-  description: 'Local-first 书签管理新标签页：云盘目录同步，AI 自动分类',
+  default_locale: 'en',
+  name: '__MSG_extName__',
+  version: '0.1.1',
+  description: '__MSG_extDescription__',
   icons: {
     16: 'public/icons/icon16.png',
     48: 'public/icons/icon48.png',
@@ -12,7 +13,7 @@ export default defineManifest({
   },
   action: {
     default_popup: 'src/popup/index.html',
-    default_title: '收藏当前页到签屿',
+    default_title: '__MSG_actionTitle__',
     default_icon: {
       16: 'public/icons/icon16.png',
       48: 'public/icons/icon48.png',
@@ -30,7 +31,7 @@ export default defineManifest({
   commands: {
     'save-current-tab': {
       suggested_key: { default: 'Ctrl+Shift+S', mac: 'Command+Shift+S' },
-      description: '收藏当前标签页',
+      description: '__MSG_commandSaveCurrentTab__',
     },
   },
 })

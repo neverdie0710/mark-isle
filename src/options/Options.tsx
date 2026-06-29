@@ -4,6 +4,7 @@ import {
   DEFAULT_APPEARANCE,
   type AppearanceConfig,
   type BackgroundMode,
+  type Locale,
 } from '../shared/types'
 import {
   isFileSystemAccessSupported,
@@ -20,7 +21,9 @@ import {
   type BrowserBookmarkImportReport,
 } from '../ai/bookmarkImport'
 import { encryptSecret, decryptSecret } from '../shared/crypto'
-import { APP_NAME, APP_NAME_EN, appIconUrl } from '../shared/brand'
+import { APP_NAME_EN, appIconUrl } from '../shared/brand'
+import { localeLabel } from '../shared/i18n'
+import { useI18n } from '../shared/useI18n'
 
 const card = 'rounded-xl border border-line bg-white p-5'
 const input =
@@ -29,6 +32,7 @@ const btn = 'rounded-lg bg-accent px-4 py-2 text-sm text-white hover:opacity-90'
 const btnGhost = 'rounded-lg bg-canvas px-4 py-2 text-sm text-ink hover:bg-line'
 
 export default function Options() {
+  const { locale, setLocale, t } = useI18n()
   const [deviceId, setDeviceId] = useState('')
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('unconfigured')
 
@@ -61,6 +65,10 @@ export default function Options() {
     })()
   }, [])
 
+  useEffect(() => {
+    document.title = t('appSettings')
+  }, [t])
+
   const connectDir = async () => {
     const handle = await pickSyncDirectory()
     if (handle) {
@@ -75,7 +83,7 @@ export default function Options() {
   const syncNow = async () => {
     const s = await sync({ requestPermission: true })
     setSyncStatus(s)
-    setSavedMsg(s === 'ok' ? '同步完成' : '同步未成功（见状态）')
+    setSavedMsg(s === 'ok' ? t('syncDone') : t('syncFailedStatus'))
     setTimeout(() => setSavedMsg(''), 2000)
   }
 
@@ -84,24 +92,24 @@ export default function Options() {
     await updateMeta({
       llmConfig: { enabled: llmEnabled, endpoint, model, apiKeyCipher: cipher },
     })
-    setSavedMsg('已保存')
+    setSavedMsg(t('saved'))
     setTimeout(() => setSavedMsg(''), 2000)
   }
   const testLLM = async () => {
-    setTestMsg('测试中…')
-    const r = await testLLMConnection(endpoint, model, apiKey)
+    setTestMsg(t('testing'))
+    const r = await testLLMConnection(endpoint, model, apiKey, locale)
     setTestMsg(r.message)
   }
 
   const saveAppearance = async () => {
     await saveAppearanceConfig(appearance)
-    setSavedMsg('外观设置已保存，刷新新标签页后生效')
+    setSavedMsg(t('appearanceSaved'))
     setTimeout(() => setSavedMsg(''), 2500)
   }
   const resetAppearance = async () => {
     setAppearance(DEFAULT_APPEARANCE)
     await saveAppearanceConfig(DEFAULT_APPEARANCE)
-    setSavedMsg('外观设置已重置')
+    setSavedMsg(t('appearanceReset'))
     setTimeout(() => setSavedMsg(''), 2500)
   }
   const updateAppearance = <K extends keyof AppearanceConfig>(
@@ -112,7 +120,7 @@ export default function Options() {
   }
   const useBackgroundFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
-      setSavedMsg('请选择图片文件')
+      setSavedMsg(t('chooseImageFile'))
       setTimeout(() => setSavedMsg(''), 2000)
       return
     }
@@ -128,9 +136,9 @@ export default function Options() {
     const text = await file.text()
     try {
       const r = await importBackup(text)
-      setSavedMsg(`导入完成，合并 ${r.added} 条`)
+      setSavedMsg(t('importMergeDone', { count: r.added }))
     } catch (e) {
-      setSavedMsg(`导入失败：${(e as Error).message}`)
+      setSavedMsg(t('importFailed', { message: (e as Error).message }))
     }
     setTimeout(() => setSavedMsg(''), 3000)
   }
@@ -138,27 +146,27 @@ export default function Options() {
   const importBrowserBookmarks = async () => {
     setImportingBookmarks(true)
     setBookmarkImportReport(null)
-    setBookmarkImportMsg('准备导入浏览器书签…')
+    setBookmarkImportMsg(t('preparingImport'))
     try {
-      const report = await importExistingBrowserBookmarks(setBookmarkImportMsg)
+      const report = await importExistingBrowserBookmarks(setBookmarkImportMsg, locale)
       setBookmarkImportReport(report)
       setBookmarkImportMsg(
         report.imported
-          ? `导入完成：新增 ${report.imported} 条，生成 ${report.sections} 个分类区块`
-          : '没有可导入的新书签',
+          ? t('importDone', { imported: report.imported, sections: report.sections })
+          : t('noNewBookmarks'),
       )
     } catch (e) {
-      setBookmarkImportMsg(`导入失败：${(e as Error).message}`)
+      setBookmarkImportMsg(t('importFailed', { message: (e as Error).message }))
     } finally {
       setImportingBookmarks(false)
     }
   }
 
   const statusText: Record<SyncStatus, string> = {
-    ok: '已连接，可正常同步',
-    unconfigured: '未连接同步目录',
-    'permission-needed': '已选目录但需重新授权',
-    error: '当前浏览器不支持目录同步',
+    ok: t('syncOkLong'),
+    unconfigured: t('syncUnconfiguredLong'),
+    'permission-needed': t('syncPermissionLong'),
+    error: t('syncErrorLong'),
   }
 
   return (
@@ -166,7 +174,7 @@ export default function Options() {
       <div className="flex items-center gap-3">
         <img src={appIconUrl(48)} alt="" className="h-10 w-10 rounded-xl" />
         <div>
-          <h1 className="text-xl font-medium text-ink">{APP_NAME}设置</h1>
+          <h1 className="text-xl font-medium text-ink">{t('appSettings')}</h1>
           <p className="text-xs text-muted">{APP_NAME_EN}</p>
         </div>
       </div>
@@ -176,44 +184,60 @@ export default function Options() {
         </div>
       )}
 
+      <section className={card}>
+        <h2 className="mb-1 text-base font-medium text-ink">{t('language')}</h2>
+        <p className="mb-4 text-xs text-muted">{t('languageHelp')}</p>
+        <select
+          className={input}
+          value={locale}
+          onChange={(e) => {
+            void setLocale(e.target.value as Locale)
+            setSavedMsg(t('saved'))
+            setTimeout(() => setSavedMsg(''), 2000)
+          }}
+        >
+          {(['zh-CN', 'en'] as Locale[]).map((item) => (
+            <option key={item} value={item}>
+              {localeLabel(item)}
+            </option>
+          ))}
+        </select>
+      </section>
+
       {/* 云盘目录同步 */}
       <section className={card}>
-        <h2 className="mb-1 text-base font-medium text-ink">云盘目录同步</h2>
-        <p className="mb-4 text-xs text-muted">
-          选择一个位于 iCloud Drive / 坚果云 / Dropbox / OneDrive 等云盘内的本地文件夹。
-          本机数据会写入该文件夹，由云盘客户端负责同步到其它设备。无中心化服务，
-          云盘不可用时本地仍可正常使用。
-        </p>
+        <h2 className="mb-1 text-base font-medium text-ink">{t('syncSection')}</h2>
+        <p className="mb-4 text-xs text-muted">{t('syncDescription')}</p>
         {!isFileSystemAccessSupported() ? (
           <div className="text-sm text-red-500">
-            当前浏览器不支持 File System Access API，无法使用目录同步。请用 Chrome / Edge。
+            {t('fsUnsupported')}
           </div>
         ) : (
           <>
             <div className="mb-3 text-sm">
-              状态：<span className="text-ink">{statusText[syncStatus]}</span>
+              {t('status')}：<span className="text-ink">{statusText[syncStatus]}</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {syncStatus === 'unconfigured' ? (
                 <button className={btn} onClick={connectDir}>
-                  选择云盘文件夹
+                  {t('chooseCloudFolder')}
                 </button>
               ) : (
                 <>
                   <button className={btn} onClick={syncNow}>
-                    立即同步
+                    {t('syncNow')}
                   </button>
                   <button className={btnGhost} onClick={connectDir}>
-                    更换文件夹
+                    {t('changeFolder')}
                   </button>
                   <button className={btnGhost} onClick={disconnectDir}>
-                    断开
+                    {t('disconnect')}
                   </button>
                 </>
               )}
             </div>
             <p className="mt-3 text-xs text-muted">
-              本机标识：{deviceId}（写入 device-{deviceId}.json）
+              {t('deviceId', { deviceId })}
             </p>
           </>
         )}
@@ -221,13 +245,11 @@ export default function Options() {
 
       {/* 外观设置 */}
       <section className={card}>
-        <h2 className="mb-1 text-base font-medium text-ink">外观与背景</h2>
-        <p className="mb-4 text-xs text-muted">
-          可配置新标签页背景图、显示方式、遮罩强度和区块透明度。图片 URL 最轻量；本地图片会以 data URL 形式保存在本机浏览器数据库。
-        </p>
+        <h2 className="mb-1 text-base font-medium text-ink">{t('appearanceSection')}</h2>
+        <p className="mb-4 text-xs text-muted">{t('appearanceDescription')}</p>
         <div className="space-y-3">
           <div>
-            <span className="mb-1 block text-xs text-muted">背景图 URL</span>
+            <span className="mb-1 block text-xs text-muted">{t('backgroundUrl')}</span>
             <input
               className={input}
               value={appearance.backgroundImage || ''}
@@ -237,13 +259,13 @@ export default function Options() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button className={btnGhost} onClick={() => bgFileRef.current?.click()}>
-              上传本地图片
+              {t('uploadLocalImage')}
             </button>
             <button
               className={btnGhost}
               onClick={() => updateAppearance('backgroundImage', '')}
             >
-              清除背景图
+              {t('clearBackground')}
             </button>
             <input
               ref={bgFileRef}
@@ -259,7 +281,7 @@ export default function Options() {
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="text-xs text-muted">
-              显示方式
+              {t('backgroundMode')}
               <select
                 className={`${input} mt-1`}
                 value={appearance.backgroundMode}
@@ -267,13 +289,13 @@ export default function Options() {
                   updateAppearance('backgroundMode', e.target.value as BackgroundMode)
                 }
               >
-                <option value="cover">铺满裁切</option>
-                <option value="contain">完整显示</option>
-                <option value="repeat">平铺</option>
+                <option value="cover">{t('cover')}</option>
+                <option value="contain">{t('contain')}</option>
+                <option value="repeat">{t('repeat')}</option>
               </select>
             </label>
             <label className="text-xs text-muted">
-              背景遮罩 {Math.round(appearance.overlay * 100)}%
+              {t('overlay', { value: Math.round(appearance.overlay * 100) })}
               <input
                 className="mt-3 w-full accent-[#534ab7]"
                 type="range"
@@ -285,7 +307,7 @@ export default function Options() {
               />
             </label>
             <label className="text-xs text-muted">
-              区块透明度 {Math.round(appearance.panelOpacity * 100)}%
+              {t('panelOpacity', { value: Math.round(appearance.panelOpacity * 100) })}
               <input
                 className="mt-3 w-full accent-[#534ab7]"
                 type="range"
@@ -306,32 +328,29 @@ export default function Options() {
         </div>
         <div className="mt-4 flex gap-2">
           <button className={btn} onClick={saveAppearance}>
-            保存外观
+            {t('saveAppearance')}
           </button>
           <button className={btnGhost} onClick={resetAppearance}>
-            恢复默认
+            {t('restoreDefault')}
           </button>
         </div>
       </section>
 
       {/* AI 自动分类 */}
       <section className={card}>
-        <h2 className="mb-1 text-base font-medium text-ink">AI 自动分类</h2>
-        <p className="mb-4 text-xs text-muted">
-          填写任意 OpenAI 兼容接口。未启用或调用失败时，自动降级为本地域名/关键词规则分类，
-          离线也能用。API Key 会加密后存于本地，不会上传。
-        </p>
+        <h2 className="mb-1 text-base font-medium text-ink">{t('aiClassification')}</h2>
+        <p className="mb-4 text-xs text-muted">{t('aiDescription')}</p>
         <label className="mb-3 flex items-center gap-2 text-sm text-ink">
           <input
             type="checkbox"
             checked={llmEnabled}
             onChange={(e) => setLlmEnabled(e.target.checked)}
           />
-          启用 LLM 分类
+          {t('enableLlm')}
         </label>
         <div className="space-y-3">
           <div>
-            <span className="mb-1 block text-xs text-muted">接口地址（base URL）</span>
+            <span className="mb-1 block text-xs text-muted">{t('endpoint')}</span>
             <input
               className={input}
               value={endpoint}
@@ -340,7 +359,7 @@ export default function Options() {
             />
           </div>
           <div>
-            <span className="mb-1 block text-xs text-muted">模型</span>
+            <span className="mb-1 block text-xs text-muted">{t('model')}</span>
             <input
               className={input}
               value={model}
@@ -361,10 +380,10 @@ export default function Options() {
         </div>
         <div className="mt-4 flex items-center gap-2">
           <button className={btn} onClick={saveLLM}>
-            保存
+            {t('save')}
           </button>
           <button className={btnGhost} onClick={testLLM}>
-            测试连接
+            {t('testConnection')}
           </button>
           {testMsg && <span className="text-xs text-muted">{testMsg}</span>}
         </div>
@@ -372,17 +391,15 @@ export default function Options() {
 
       {/* AI 导入存量书签 */}
       <section className={card}>
-        <h2 className="mb-1 text-base font-medium text-ink">AI 导入存量书签</h2>
-        <p className="mb-4 text-xs text-muted">
-          一键读取浏览器现有书签，自动去重、跳过无效/低质量链接，并按 AI 或本地规则分类后导入为新的导航页。建议先在上方启用并保存 LLM 配置；未启用时会使用本地规则分类。
-        </p>
+        <h2 className="mb-1 text-base font-medium text-ink">{t('aiImport')}</h2>
+        <p className="mb-4 text-xs text-muted">{t('aiImportDescription')}</p>
         <div className="flex flex-wrap items-center gap-2">
           <button
             className={btn}
             onClick={importBrowserBookmarks}
             disabled={importingBookmarks}
           >
-            {importingBookmarks ? '导入中…' : '导入浏览器书签'}
+            {importingBookmarks ? t('importing') : t('importBrowserBookmarks')}
           </button>
           {bookmarkImportMsg && (
             <span className="text-xs text-muted">{bookmarkImportMsg}</span>
@@ -390,16 +407,16 @@ export default function Options() {
         </div>
         {bookmarkImportReport && (
           <div className="mt-4 grid gap-2 rounded-lg bg-canvas p-3 text-xs text-muted sm:grid-cols-2">
-            <div>扫描书签：{bookmarkImportReport.scanned} 条</div>
-            <div>候选书签：{bookmarkImportReport.candidates} 条</div>
-            <div>跳过无效：{bookmarkImportReport.skippedInvalid} 条</div>
-            <div>跳过重复：{bookmarkImportReport.skippedDuplicate} 条</div>
-            <div>已存在跳过：{bookmarkImportReport.skippedExisting} 条</div>
-            <div>低质量过滤：{bookmarkImportReport.skippedLowQuality} 条</div>
-            <div>新增导入：{bookmarkImportReport.imported} 条</div>
-            <div>分类来源：{bookmarkImportReport.source === 'llm' ? 'AI' : bookmarkImportReport.source === 'mixed' ? 'AI + 规则' : '本地规则'}</div>
+            <div>{t('scannedBookmarks', { count: bookmarkImportReport.scanned })}</div>
+            <div>{t('candidateBookmarks', { count: bookmarkImportReport.candidates })}</div>
+            <div>{t('skippedInvalid', { count: bookmarkImportReport.skippedInvalid })}</div>
+            <div>{t('skippedDuplicate', { count: bookmarkImportReport.skippedDuplicate })}</div>
+            <div>{t('skippedExisting', { count: bookmarkImportReport.skippedExisting })}</div>
+            <div>{t('skippedLowQuality', { count: bookmarkImportReport.skippedLowQuality })}</div>
+            <div>{t('importedCount', { count: bookmarkImportReport.imported })}</div>
+            <div>{t('categorySource', { source: bookmarkImportReport.source === 'llm' ? 'AI' : bookmarkImportReport.source === 'mixed' ? 'AI + Rules' : t('localRules') })}</div>
             {bookmarkImportReport.pageTitle && (
-              <div className="sm:col-span-2">新导航页：{bookmarkImportReport.pageTitle}</div>
+              <div className="sm:col-span-2">{t('newImportedPage', { title: bookmarkImportReport.pageTitle })}</div>
             )}
           </div>
         )}
@@ -407,16 +424,14 @@ export default function Options() {
 
       {/* 导入导出 */}
       <section className={card}>
-        <h2 className="mb-1 text-base font-medium text-ink">备份与恢复</h2>
-        <p className="mb-4 text-xs text-muted">
-          导出全部数据为 JSON 文件；导入时按版本与时间智能合并，不会粗暴覆盖。
-        </p>
+        <h2 className="mb-1 text-base font-medium text-ink">{t('backupRestore')}</h2>
+        <p className="mb-4 text-xs text-muted">{t('backupDescription')}</p>
         <div className="flex gap-2">
           <button className={btn} onClick={doExport}>
-            导出 JSON
+            {t('exportJson')}
           </button>
           <button className={btnGhost} onClick={() => fileRef.current?.click()}>
-            导入 JSON
+            {t('importJson')}
           </button>
           <input
             ref={fileRef}

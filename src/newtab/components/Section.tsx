@@ -21,6 +21,7 @@ import type {
   Section as SectionT,
 } from '../../shared/types'
 import { BookmarkCard } from './BookmarkCard'
+import { useI18n } from '../../shared/useI18n'
 
 interface SectionWithBookmarks extends SectionT {
   bookmarks: Bookmark[]
@@ -70,15 +71,21 @@ type SectionStyle = CSSProperties & {
   '--bn-section-paper-bg': string
 }
 
-const displayModeOptions: Array<{ value: BookmarkDisplayMode; label: string }> = [
-  { value: 'list', label: '列表' },
-  { value: 'icon', label: '图标' },
+const displayModeOptions: Array<{
+  value: BookmarkDisplayMode
+  labelKey: 'displayList' | 'displayIcon'
+}> = [
+  { value: 'list', labelKey: 'displayList' },
+  { value: 'icon', labelKey: 'displayIcon' },
 ]
 
-const iconSizeOptions: Array<{ value: BookmarkIconSize; label: string }> = [
-  { value: 'small', label: '小' },
-  { value: 'medium', label: '中' },
-  { value: 'large', label: '大' },
+const iconSizeOptions: Array<{
+  value: BookmarkIconSize
+  labelKey: 'sizeSmall' | 'sizeMedium' | 'sizeLarge'
+}> = [
+  { value: 'small', labelKey: 'sizeSmall' },
+  { value: 'medium', labelKey: 'sizeMedium' },
+  { value: 'large', labelKey: 'sizeLarge' },
 ]
 
 const GRID_ROW_HEIGHT = 56
@@ -140,6 +147,7 @@ export function Section({
   onUpdateSection,
   onDeleteSection,
 }: Props) {
+  const { t } = useI18n()
   const [editing, setEditing] = useState(false)
   const [titleDraft, setTitleDraft] = useState(section.title)
   const [layoutDraft, setLayoutDraft] = useState(() => ({
@@ -286,7 +294,7 @@ export function Section({
     >
       <div
         className="mb-1.5 flex min-h-[28px] cursor-grab items-center gap-1.5 active:cursor-grabbing"
-        title={dragDisabled ? '搜索时暂不支持拖拽区块' : '拖拽标题栏调整区块位置'}
+        title={dragDisabled ? t('dragDisabledSearch') : t('dragSection')}
         {...(dragDisabled ? {} : { ...attributes, ...listeners })}
       >
         <span className="rounded px-1.5 py-1 text-xs text-muted hover:bg-black/5 hover:text-ink">
@@ -310,7 +318,7 @@ export function Section({
             className="min-w-0 flex-1 cursor-text truncate text-sm font-semibold text-ink"
             onPointerDown={(e) => e.stopPropagation()}
             onDoubleClick={() => setEditing(true)}
-            title="双击重命名"
+            title={t('doubleClickRename')}
           >
             {section.title}
           </h3>
@@ -320,7 +328,7 @@ export function Section({
           className="rounded px-1.5 py-0.5 text-sm text-muted hover:bg-black/5 hover:text-ink"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => onAddBookmark(section.id)}
-          title="添加书签"
+          title={t('addBookmark')}
         >
           +
         </button>
@@ -328,19 +336,19 @@ export function Section({
           className="rounded px-1.5 py-0.5 text-xs text-muted hover:bg-black/5 hover:text-ink"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => setStyleOpen((open) => !open)}
-          title="区域样式"
-          aria-label="区域样式"
+          title={t('sectionStyle')}
+          aria-label={t('sectionStyle')}
         >
-          样式
+          {t('style')}
         </button>
         <button
           className="rounded px-1.5 py-0.5 text-sm text-muted hover:bg-black/5 hover:text-red-500"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => {
-            if (confirm(`删除区域「${section.title}」及其所有书签？`))
+            if (confirm(t('confirmDeleteSection', { title: section.title })))
               onDeleteSection(section.id)
           }}
-          title="删除区域"
+          title={t('delete')}
         >
           ×
         </button>
@@ -364,7 +372,7 @@ export function Section({
                   updateSectionStyle({ bookmarkDisplayMode: option.value })
                 }
               >
-                {option.label}
+                {t(option.labelKey)}
               </button>
             ))}
           </div>
@@ -381,7 +389,9 @@ export function Section({
             >
               {iconSizeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {bookmarkDisplayMode === 'icon' ? '图标' : '列表'}：{option.label}
+                  {bookmarkDisplayMode === 'icon' ? t('displayIcon') : t('displayList')}:
+                  {' '}
+                  {t(option.labelKey)}
                 </option>
               ))}
             </select>
@@ -395,7 +405,7 @@ export function Section({
                     updateSectionStyle({ showBookmarkLabels: e.target.checked })
                   }
                 />
-                标题
+                {t('showLabel')}
               </label>
             )}
           </div>
@@ -416,20 +426,20 @@ export function Section({
               />
             ))}
             <label className="ml-auto flex items-center gap-1 rounded-lg border border-line bg-white/70 px-2 py-1 text-muted">
-              <span>自定义</span>
+              <span>{t('custom')}</span>
               <input
                 type="color"
                 className="h-5 w-6 cursor-pointer border-0 bg-transparent p-0"
                 value={backgroundColor}
                 onChange={(e) => updateSectionStyle({ backgroundColor: e.target.value })}
-                title="自定义背景色"
+                title={t('customBackgroundColor')}
               />
             </label>
             <button
               className="rounded-lg bg-canvas px-2 py-1 text-muted hover:bg-line hover:text-ink"
               onClick={() => updateSectionStyle(DEFAULT_SECTION_STYLE)}
             >
-              重置
+              {t('reset')}
             </button>
           </div>
         </div>
@@ -464,7 +474,7 @@ export function Section({
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => onAddBookmark(section.id)}
             >
-              + 添加书签
+              {t('addBookmarkInline')}
             </button>
           )}
         </div>
@@ -473,8 +483,8 @@ export function Section({
       <button
         className="bn-section-resize-handle"
         onPointerDown={resizeByPointer}
-        title="拖拽调整区块大小"
-        aria-label="拖拽调整区块大小"
+        title={t('resizeSection')}
+        aria-label={t('resizeSection')}
       />
     </div>
   )

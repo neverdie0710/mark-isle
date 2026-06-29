@@ -1,6 +1,8 @@
 import { getMeta } from '../data/db'
 import { decryptSecret } from '../shared/crypto'
 import { classifyByRules } from './ruleFallback'
+import { tr } from '../shared/i18n'
+import type { Locale } from '../shared/types'
 
 export interface ClassifyInput {
   title: string
@@ -25,8 +27,9 @@ export async function classifyBookmark(
 ): Promise<ClassifyResult> {
   const meta = await getMeta()
   const cfg = meta.llmConfig
+  const locale = meta.locale
   const ruleResult: ClassifyResult = {
-    categoryName: classifyByRules(input.title, input.url),
+    categoryName: classifyByRules(input.title, input.url, locale),
     source: 'rule',
   }
 
@@ -36,7 +39,7 @@ export async function classifyBookmark(
   try {
     const apiKey = await decryptSecret(cfg.apiKeyCipher, meta.deviceId)
     if (!apiKey) return ruleResult
-    const name = await callLLM(cfg.endpoint, cfg.model, apiKey, input, existingCategories)
+    const name = await callLLM(cfg.endpoint, cfg.model, apiKey, input, existingCategories, locale)
     if (name) return { categoryName: name, source: 'llm' }
   } catch (e) {
     console.warn('[classifier] LLM failed, fallback to rules:', e)
@@ -50,16 +53,21 @@ async function callLLM(
   apiKey: string,
   input: ClassifyInput,
   existing: string[],
+  locale: Locale = 'zh-CN',
 ): Promise<string | null> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
     const sys =
-      '你是书签分类助手。根据网页标题和 URL，返回一个最合适的简短中文分类名（2-6 字）。' +
-      '优先复用已有分类。只返回 JSON：{"category":"分类名"}，不要解释。'
+      locale === 'en'
+        ? 'You are a bookmark classification assistant. Based on the page title and URL, return the best short English category name, usually 1-3 words. Prefer existing categories. Return only JSON: {"category":"Category"} with no explanation.'
+        : '你是书签分类助手。根据网页标题和 URL，返回一个最合适的简短中文分类名（2-6 字）。优先复用已有分类。只返回 JSON：{"category":"分类名"}，不要解释。'
     const user =
-      `标题：${input.title}\nURL：${input.url}\n` +
-      (existing.length ? `已有分类：${existing.join('、')}` : '暂无已有分类')
+      locale === 'en'
+        ? `Title: ${input.title}\nURL: ${input.url}\n`
+          + (existing.length ? `Existing categories: ${existing.join(', ')}` : 'No existing categories')
+        : `标题：${input.title}\nURL：${input.url}\n`
+          + (existing.length ? `已有分类：${existing.join('、')}` : '暂无已有分类')
 
     const url = endpoint.replace(/\/+$/, '') + '/chat/completions'
     const resp = await fetch(url, {
@@ -104,6 +112,7 @@ export async function testLLMConnection(
   endpoint: string,
   model: string,
   apiKey: string,
+  locale: Locale = 'zh-CN',
 ): Promise<{ ok: boolean; message: string }> {
   try {
     const name = await callLLM(
@@ -111,11 +120,12 @@ export async function testLLMConnection(
       model,
       apiKey,
       { title: 'GitHub', url: 'https://github.com' },
-      ['开发', '阅读'],
+      locale === 'en' ? ['Development', 'Reading'] : ['开发', '阅读'],
+      locale,
     )
     return name
-      ? { ok: true, message: `连接成功，示例分类：${name}` }
-      : { ok: false, message: '接口返回为空' }
+      ? { ok: true, message: tr(locale, 'connectionSucceeded', { category: name }) }
+      : { ok: false, message: tr(locale, 'emptyResponse') }
   } catch (e) {
     return { ok: false, message: (e as Error).message }
   }

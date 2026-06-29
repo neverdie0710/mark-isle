@@ -5,6 +5,7 @@ import { classifyBookmark } from '../ai/classifier'
 import { faviconUrl } from '../shared/favicon'
 import { APP_NAME, APP_NAME_EN, appIconUrl } from '../shared/brand'
 import type { NavPage, Section } from '../shared/types'
+import { useI18n } from '../shared/useI18n'
 
 interface Tab {
   title: string
@@ -13,6 +14,7 @@ interface Tab {
 }
 
 export default function Popup() {
+  const { t } = useI18n()
   const [tab, setTab] = useState<Tab | null>(null)
   const [pages, setPages] = useState<NavPage[]>([])
   const [sections, setSections] = useState<Section[]>([])
@@ -56,6 +58,10 @@ export default function Popup() {
     })()
   }, [])
 
+  useEffect(() => {
+    document.title = t('saveToApp')
+  }, [t])
+
   const onPageChange = async (pid: string) => {
     setPageId(pid)
     const ss = await repo.listSections(pid)
@@ -70,10 +76,10 @@ export default function Popup() {
       // 没有区域则在当前页建一个默认区域
       let pid = pageId
       if (!pid) {
-        const p = await repo.createNavPage('我的导航')
+        const p = await repo.createNavPage(t('defaultPageTitle'))
         pid = p.id
       }
-      const s = await repo.createSection(pid, '收藏')
+      const s = await repo.createSection(pid, t('addBookmark'))
       targetSection = s.id
     }
     const cat = aiTag ? await repo.upsertCategory(aiTag) : undefined
@@ -87,7 +93,7 @@ export default function Popup() {
     setTimeout(() => window.close(), 700)
   }
 
-  if (!tab) return <div className="p-4 text-sm text-muted">读取当前页…</div>
+  if (!tab) return <div className="p-4 text-sm text-muted">{t('popupLoading')}</div>
 
   return (
     <div className="space-y-3 p-4">
@@ -109,15 +115,15 @@ export default function Popup() {
       </div>
 
       <input
-        className="w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-accent"
+          className="w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-accent"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="标题"
+        placeholder={t('title')}
       />
 
       {aiTag && (
         <div className="text-xs text-muted">
-          建议分类：<span className="text-accent">{aiTag}</span>
+          {t('suggestedCategory')}<span className="text-accent">{aiTag}</span>
         </div>
       )}
 
@@ -138,7 +144,7 @@ export default function Popup() {
           value={sectionId}
           onChange={(e) => setSectionId(e.target.value)}
         >
-          {sections.length === 0 && <option value="">（自动创建区域）</option>}
+          {sections.length === 0 && <option value="">{t('autoCreateSection')}</option>}
           {sections.map((s) => (
             <option key={s.id} value={s.id}>
               {s.title}
@@ -152,7 +158,7 @@ export default function Popup() {
         onClick={save}
         disabled={saved}
       >
-        {saved ? '已收藏 ✓' : '收藏到签屿'}
+        {saved ? t('savedCheck') : t('saveToApp')}
       </button>
     </div>
   )

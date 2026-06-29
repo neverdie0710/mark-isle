@@ -1,6 +1,6 @@
 {
   "name": "mark-isle",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "签屿 Mark Isle：本地优先的 Chrome 书签管理与新标签页导航扩展，支持云盘同步和 AI 自动分类。",
   "type": "module",
   "repository": {

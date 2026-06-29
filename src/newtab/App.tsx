@@ -16,6 +16,7 @@ import { Toolbar } from './components/Toolbar'
 import { Section } from './components/Section'
 import { BookmarkEditor } from './components/BookmarkEditor'
 import { faviconUrl } from '../shared/favicon'
+import { useI18n } from '../shared/useI18n'
 
 const sectionSortableId = (id: string) => `section:${id}`
 const stripSortablePrefix = (id: string, prefix: 'section' | 'bookmark') =>
@@ -27,6 +28,7 @@ type PageStyle = CSSProperties & {
 }
 
 export default function App() {
+  const { t } = useI18n()
   const {
     pages,
     activePageId,
@@ -50,6 +52,10 @@ export default function App() {
   useEffect(() => {
     init()
   }, [init])
+
+  useEffect(() => {
+    document.title = t('appTitle')
+  }, [t])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -136,7 +142,7 @@ export default function App() {
 
   // ---- 页 / 区域操作 ----
   const addPage = async () => {
-    const title = prompt('导航页名称', '新导航页')
+    const title = prompt(t('pageName'), t('newNavPage'))
     if (!title) return
     const p = await repo.createNavPage(title)
     await refresh()
@@ -144,20 +150,20 @@ export default function App() {
   }
   const renamePage = async (id: string) => {
     const cur = pages.find((p) => p.id === id)
-    const title = prompt('重命名导航页', cur?.title ?? '')
+    const title = prompt(t('renameNavPage'), cur?.title ?? '')
     if (title && title.trim()) {
       await repo.updateNavPage(id, { title: title.trim() })
       await refresh()
     }
   }
   const deletePage = async (id: string) => {
-    if (!confirm('删除当前导航页及其全部内容？')) return
+    if (!confirm(t('confirmDeletePage'))) return
     await repo.deleteNavPage(id)
     await refresh()
   }
   const addSection = async () => {
     if (!activePageId) return
-    const title = prompt('区域名称', '新区域')
+    const title = prompt(t('sectionName'), t('newSection'))
     if (!title) return
     await repo.createSection(activePageId, title)
     await refresh()
@@ -266,7 +272,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="bn-page flex h-screen items-center justify-center text-white/80">
-        加载中…
+        {t('loading')}
       </div>
     )
   }
@@ -293,7 +299,7 @@ export default function App() {
           <main className="px-4 pb-8 pt-5 sm:px-6 lg:px-8">
             {filteredSections.length === 0 ? (
               <div className="mx-auto mt-20 max-w-xl rounded-2xl bg-white/80 p-8 text-center text-muted shadow-sm backdrop-blur">
-                {search ? '没有匹配的书签' : '还没有区域，点右上角「+ 区域」开始吧'}
+                {search ? t('noMatchedBookmarks') : t('emptySections')}
               </div>
             ) : (
               <SortableContext

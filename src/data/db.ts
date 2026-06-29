@@ -11,6 +11,7 @@ import type {
 } from '../shared/types'
 import { DEFAULT_APPEARANCE } from '../shared/types'
 import { uuid, shortId, now } from '../shared/id'
+import { detectLocale, tr } from '../shared/i18n'
 
 /** 存目录句柄等不可序列化对象用单独的 kv 表 */
 export interface KV {
@@ -98,6 +99,7 @@ export async function getMeta(): Promise<Meta> {
       deviceLabel: detectPlatform(),
       lastSyncAt: 0,
       lamportClock: 0,
+      locale: detectLocale(),
       llmConfig: { enabled: false, endpoint: '', model: '' },
       appearance: DEFAULT_APPEARANCE,
       appearanceUpdatedAt: 0,
@@ -110,6 +112,7 @@ export async function getMeta(): Promise<Meta> {
     const normalized = normalizeMeta(m)
     if (
       normalized.appearance !== m.appearance
+      || normalized.locale !== m.locale
       || normalized.appearanceUpdatedAt !== m.appearanceUpdatedAt
       || normalized.appearanceLamport !== m.appearanceLamport
       || normalized.appearanceModifiedBy !== m.appearanceModifiedBy
@@ -179,6 +182,7 @@ export async function applySyncedAppearance(
 function normalizeMeta(meta: Meta): Meta {
   return {
     ...meta,
+    locale: meta.locale ?? detectLocale(),
     appearance: { ...DEFAULT_APPEARANCE, ...(meta.appearance ?? {}) },
     appearanceUpdatedAt: meta.appearanceUpdatedAt ?? 0,
     appearanceLamport: meta.appearanceLamport ?? 0,
@@ -232,11 +236,12 @@ export async function seedIfEmpty(): Promise<void> {
 
   const meta = await getMeta()
   const dev = meta.deviceId
+  const locale = meta.locale
   const ts = now()
   const pageId = uuid()
   await db.navPages.put({
     id: pageId,
-    title: '我的导航',
+    title: tr(locale, 'defaultPageTitle'),
     order: 0,
     updatedAt: ts,
     lamport: await nextLamport(),
@@ -246,8 +251,8 @@ export async function seedIfEmpty(): Promise<void> {
   })
 
   const sections: Array<[string, string[]]> = [
-    ['常用', ['https://github.com', 'https://www.google.com']],
-    ['学习', ['https://developer.mozilla.org', 'https://stackoverflow.com']],
+    [tr(locale, 'defaultSectionCommon'), ['https://github.com', 'https://www.google.com']],
+    [tr(locale, 'defaultSectionLearning'), ['https://developer.mozilla.org', 'https://stackoverflow.com']],
   ]
   let sOrder = 0
   for (const [title, urls] of sections) {

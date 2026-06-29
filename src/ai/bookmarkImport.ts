@@ -2,6 +2,8 @@ import { db, getMeta } from '../data/db'
 import { importBookmarksToNewPage, type BookmarkImportItem } from '../data/repository'
 import { decryptSecret } from '../shared/crypto'
 import { faviconUrl, titleFromUrl } from '../shared/favicon'
+import { tr } from '../shared/i18n'
+import type { Locale } from '../shared/types'
 import { classifyByRules } from './ruleFallback'
 
 interface RawBrowserBookmark {
@@ -61,9 +63,10 @@ const TRACKING_PARAMS = [
 
 export async function importExistingBrowserBookmarks(
   onProgress?: (message: string) => void,
+  locale: Locale = 'zh-CN',
 ): Promise<BrowserBookmarkImportReport> {
-  onProgress?.('正在读取浏览器书签…')
-  const raw = await readBrowserBookmarks()
+  onProgress?.(tr(locale, 'readingBrowserBookmarks'))
+  const raw = await readBrowserBookmarks(locale)
   const prepared = await prepareCandidates(raw)
 
   if (prepared.candidates.length === 0) {
@@ -80,11 +83,11 @@ export async function importExistingBrowserBookmarks(
     }
   }
 
-  onProgress?.(`已找到 ${prepared.candidates.length} 条可导入书签，开始清洗分类…`)
+  onProgress?.(tr(locale, 'foundImportableBookmarks', { count: prepared.candidates.length }))
   const existingCategories = (
     await db.categories.filter((category) => !category.deleted).toArray()
   ).map((category) => category.name)
-  const plan = await buildImportPlan(prepared.candidates, existingCategories, onProgress)
+  const plan = await buildImportPlan(prepared.candidates, existingCategories, onProgress, locale)
 
   if (plan.items.length === 0) {
     return {
@@ -100,8 +103,10 @@ export async function importExistingBrowserBookmarks(
     }
   }
 
-  const pageTitle = `AI 导入书签 ${new Date().toLocaleDateString('zh-CN')}`
-  onProgress?.(`正在写入 ${plan.items.length} 条书签…`)
+  const pageTitle = tr(locale, 'importedPageTitle', {
+    date: new Date().toLocaleDateString(locale),
+  })
+  onProgress?.(tr(locale, 'writingBookmarks', { count: plan.items.length }))
   const result = await importBookmarksToNewPage(pageTitle, plan.items)
 
   return {
@@ -118,9 +123,9 @@ export async function importExistingBrowserBookmarks(
   }
 }
 
-async function readBrowserBookmarks(): Promise<RawBrowserBookmark[]> {
+async function readBrowserBookmarks(locale: Locale): Promise<RawBrowserBookmark[]> {
   if (!chrome.bookmarks?.getTree) {
-    throw new Error('当前扩展没有浏览器书签读取权限，请重新加载扩展并确认授权')
+    throw new Error(tr(locale, 'bookmarksPermissionError'))
   }
 
   const tree = await new Promise<chrome.bookmarks.BookmarkTreeNode[]>(
@@ -246,15 +251,16 @@ async function buildImportPlan(
   candidates: CandidateBookmark[],
   existingCategories: string[],
   onProgress?: (message: string) => void,
+  locale: Locale = 'zh-CN',
 ): Promise<ImportPlan> {
   const meta = await getMeta()
   const cfg = meta.llmConfig
   if (!cfg.enabled || !cfg.endpoint || !cfg.apiKeyCipher || !navigator.onLine) {
-    return buildRulePlan(candidates)
+    return buildRulePlan(candidates, locale)
   }
 
   const apiKey = await decryptSecret(cfg.apiKeyCipher, meta.deviceId)
-  if (!apiKey) return buildRulePlan(candidates)
+  if (!apiKey) return buildRulePlan(candidates, locale)
 
   const items: BookmarkImportItem[] = []
   let skippedLowQuality = 0
@@ -270,6 +276,7 @@ async function buildImportPlan(
         apiKey,
         batch,
         existingCategories,
+        locale,
       )
       const mapped = new Map(decisions.map((decision) => [decision.index, decision]))
       for (let i = 0; i < batch.length; i++) {
@@ -279,15 +286,18 @@ async function buildImportPlan(
           skippedLowQuality += 1
           continue
         }
-        items.push(toImportItem(candidate, decision?.category, decision?.title))
+        items.push(toImportItem(candidate, decision?.category, decision?.title, locale))
       }
       usedLLM = true
     } catch (e) {
       console.warn('[bookmarkImport] LLM cleanup failed, fallback to rules:', e)
-      items.push(...buildRulePlan(batch).items)
+      items.push(...buildRulePlan(batch, locale).items)
       usedRule = true
     }
-    onProgress?.(`已处理 ${Math.min(start + BATCH_SIZE, candidates.length)} / ${candidates.length} 条书签…`)
+    onProgress?.(tr(locale, 'processedBookmarks', {
+      done: Math.min(start + BATCH_SIZE, candidates.length),
+      total: candidates.length,
+    }))
   }
 
   return {
@@ -297,9 +307,9 @@ async function buildImportPlan(
   }
 }
 
-function buildRulePlan(candidates: CandidateBookmark[]): ImportPlan {
+function buildRulePlan(candidates: CandidateBookmark[], locale: Locale = 'zh-CN'): ImportPlan {
   return {
-    items: candidates.map((candidate) => toImportItem(candidate)),
+    items: candidates.map((candidate) => toImportItem(candidate, undefined, undefined, locale)),
     skippedLowQuality: 0,
     source: 'rule',
   }
@@ -309,17 +319,19 @@ function toImportItem(
   candidate: CandidateBookmark,
   category?: string,
   title?: string,
+  locale: Locale = 'zh-CN',
 ): BookmarkImportItem {
   const folderText = candidate.path.join(' / ')
   const cleanTitle = sanitizeTitle(title || candidate.title, candidate.cleanUrl)
   const categoryName = sanitizeCategory(
-    category || classifyByRules(`${candidate.title} ${folderText}`, candidate.cleanUrl),
+    category || classifyByRules(`${candidate.title} ${folderText}`, candidate.cleanUrl, locale),
+    locale,
   )
   return {
     title: cleanTitle,
     url: candidate.cleanUrl,
     icon: faviconUrl(candidate.cleanUrl),
-    note: folderText ? `来源：${folderText}` : undefined,
+    note: folderText ? tr(locale, 'sourceNote', { source: folderText }) : undefined,
     categoryName,
   }
 }
@@ -330,6 +342,7 @@ async function callLLMBatch(
   apiKey: string,
   batch: CandidateBookmark[],
   existingCategories: string[],
+  locale: Locale = 'zh-CN',
 ): Promise<LLMDecision[]> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
@@ -353,10 +366,9 @@ async function callLLMBatch(
           {
             role: 'system',
             content:
-              '你是书签导入清洗助手。请为浏览器存量书签去掉低质量链接，并给保留链接分类。' +
-              '低质量链接包括：失效占位页、无意义临时页、重复广告追踪页、明显无法复用的登录/跳转噪音。' +
-              '不要因为小众、个人工具、外文页面而删除。分类用简短中文，优先复用已有分类。' +
-              '只返回 JSON：{"items":[{"index":0,"keep":true,"title":"标题","category":"分类","reason":"原因"}]}。',
+              locale === 'en'
+                ? 'You are a bookmark import cleanup assistant. Remove low-quality links from existing browser bookmarks and categorize the kept links. Low-quality links include placeholder pages, meaningless temporary pages, duplicate tracking links, and obvious login/redirect noise. Do not remove useful niche, personal-tool, or foreign-language pages. Use short English category names and prefer existing categories. Return only JSON: {"items":[{"index":0,"keep":true,"title":"Title","category":"Category","reason":"Reason"}]}.'
+                : '你是书签导入清洗助手。请为浏览器存量书签去掉低质量链接，并给保留链接分类。低质量链接包括：失效占位页、无意义临时页、重复广告追踪页、明显无法复用的登录/跳转噪音。不要因为小众、个人工具、外文页面而删除。分类用简短中文，优先复用已有分类。只返回 JSON：{"items":[{"index":0,"keep":true,"title":"标题","category":"分类","reason":"原因"}]}。',
           },
           {
             role: 'user',
@@ -421,7 +433,7 @@ function sanitizeTitle(title: string, url: string) {
   return (clean || titleFromUrl(url)).slice(0, 120)
 }
 
-function sanitizeCategory(category: string) {
+function sanitizeCategory(category: string, locale: Locale = 'zh-CN') {
   const clean = category.replace(/[「」“”"'{}[\]]/g, '').replace(/\s+/g, '').trim()
-  return (clean || '未分类').slice(0, 12)
+  return (clean || (locale === 'en' ? 'Uncategorized' : '未分类')).slice(0, 20)
 }

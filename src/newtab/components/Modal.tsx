@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { useI18n } from '../../shared/useI18n'
 
 interface ModalProps {
   open: boolean
@@ -9,6 +10,7 @@ interface ModalProps {
 }
 
 export function Modal({ open, title, onClose, children, footer }: ModalProps) {
+  const { t } = useI18n()
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -34,7 +36,7 @@ export function Modal({ open, title, onClose, children, footer }: ModalProps) {
               className="rounded-lg bg-canvas px-4 py-2 text-sm text-ink hover:bg-line"
               onClick={onClose}
             >
-              关闭
+              {t('close')}
             </button>
           )}
         </div>

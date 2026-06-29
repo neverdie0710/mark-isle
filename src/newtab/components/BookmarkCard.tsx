@@ -5,6 +5,7 @@ import type {
   BookmarkIconSize,
 } from '../../shared/types'
 import { faviconUrl, domainOf } from '../../shared/favicon'
+import { useI18n } from '../../shared/useI18n'
 
 interface Props {
   bookmark: Bookmark
@@ -61,6 +62,7 @@ export function BookmarkCard({
   showLabel = true,
   dragHandleProps,
 }: Props) {
+  const { t } = useI18n()
   const [hover, setHover] = useState(false)
   const icon = bookmark.icon || faviconUrl(bookmark.url)
   const domain = domainOf(bookmark.url)
@@ -104,17 +106,17 @@ export function BookmarkCard({
               className="rounded px-1 py-0.5 text-[10px] text-muted hover:bg-canvas hover:text-ink"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => onEdit(bookmark)}
-              title="编辑"
+              title={t('edit')}
             >
-              编辑
+              {t('edit')}
             </button>
             <button
               className="rounded px-1 py-0.5 text-[10px] text-muted hover:bg-canvas hover:text-red-500"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => onDelete(bookmark.id)}
-              title="删除"
+              title={t('delete')}
             >
-              删
+              {t('deleteShort')}
             </button>
           </div>
         )}
@@ -153,17 +155,17 @@ export function BookmarkCard({
             className="rounded px-1 py-0.5 text-[11px] text-muted hover:bg-canvas hover:text-ink"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => onEdit(bookmark)}
-            title="编辑"
+            title={t('edit')}
           >
-            编辑
+            {t('edit')}
           </button>
           <button
             className="rounded px-1 py-0.5 text-[11px] text-muted hover:bg-canvas hover:text-red-500"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => onDelete(bookmark.id)}
-            title="删除"
+            title={t('delete')}
           >
-            删除
+            {t('delete')}
           </button>
         </div>
       )}

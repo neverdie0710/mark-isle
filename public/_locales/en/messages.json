@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "Mark Isle"
+  },
+  "extDescription": {
+    "message": "Local-first Chrome bookmark manager and new tab dashboard with cloud-folder sync and AI classification."
+  },
+  "actionTitle": {
+    "message": "Save current page to Mark Isle"
+  },
+  "commandSaveCurrentTab": {
+    "message": "Save current tab"
+  }
+}

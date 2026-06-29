@@ -76,6 +76,7 @@ export interface LLMConfig {
 export type BackgroundMode = 'cover' | 'contain' | 'repeat'
 export type BookmarkDisplayMode = 'list' | 'icon'
 export type BookmarkIconSize = 'small' | 'medium' | 'large'
+export type Locale = 'zh-CN' | 'en'
 
 export interface AppearanceConfig {
   /** 背景图 URL 或本地图片 data URL。为空时使用默认渐变背景。 */
@@ -101,6 +102,7 @@ export interface Meta {
   lastSyncAt: number
   /** 本机已知的全局最大 Lamport 时钟，写入时自增的依据。 */
   lamportClock: number
+  locale: Locale
   llmConfig: LLMConfig
   appearance: AppearanceConfig
   /** 外观设置的 LWW 时间戳，用于跨设备同步。 */

@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "签屿 · Mark Isle"
+  },
+  "extDescription": {
+    "message": "Local-first 书签管理新标签页：云盘目录同步，AI 自动分类"
+  },
+  "actionTitle": {
+    "message": "收藏当前页到签屿"
+  },
+  "commandSaveCurrentTab": {
+    "message": "收藏当前标签页"
+  }
+}
