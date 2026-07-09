@@ -136,6 +136,12 @@ export default function App() {
     if (activePageId) await refresh()
   }
   const deleteBookmark = async (id: string) => {
+    const bookmark = sections.flatMap((s) => s.bookmarks).find((item) => item.id === id)
+    const label = bookmark?.title || bookmark?.url
+    const message = label
+      ? t('confirmDeleteBookmark', { title: label })
+      : t('confirmDeleteBookmarkGeneric')
+    if (!confirm(message)) return
     await repo.deleteBookmark(id)
     await refresh()
   }
