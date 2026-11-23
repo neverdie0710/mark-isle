@@ -10,7 +10,7 @@ import {
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
 import { useStore } from '../store/useStore'
 import * as repo from '../data/repository'
-import { sync as runSync, pickSyncDirectory } from '../data/fileSync'
+import { pickSyncDirectory } from '../data/fileSync'
 import type { Bookmark, Section as SectionT, UploadedIcon } from '../shared/types'
 import { Toolbar } from './components/Toolbar'
 import { Section } from './components/Section'
@@ -262,15 +262,15 @@ export default function App() {
 
   // ---- 同步 ----
   const onSyncClick = async () => {
-    if (syncStatus === 'unconfigured') {
+    // 未连接、需授权、或目录无响应时重新选择文件夹。
+    // 旧句柄上的 requestPermission 会和 queryPermission 一样卡住。
+    if (syncStatus !== 'ok') {
       const handle = await pickSyncDirectory()
-      if (handle) {
-        await runSync({ requestPermission: true })
-        await triggerSync(true)
-      }
-    } else {
+      if (!handle) return
       await triggerSync(true)
+      return
     }
+    await triggerSync(false)
   }
 
   const openOptions = () => chrome.runtime.openOptionsPage()

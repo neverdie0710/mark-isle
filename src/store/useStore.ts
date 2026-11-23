@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import * as repo from '../data/repository'
 import { seedIfEmpty, getMeta } from '../data/db'
-import { sync, getSyncStatus, type SyncStatus } from '../data/fileSync'
+import { sync, type SyncStatus } from '../data/fileSync'
 import { DEFAULT_APPEARANCE, type NavPage, type Section, type Bookmark, type AppearanceConfig } from '../shared/types'
 
 interface SectionWithBookmarks extends Section {
@@ -43,21 +43,26 @@ export const useStore = create<AppState>((set, get) => ({
   loading: true,
 
   init: async () => {
-    await seedIfEmpty()
-    // 写操作后自动触发一次防抖同步
-    repo.setSyncHook(() => debouncedSync(() => get().triggerSync(false)))
+    try {
+      await seedIfEmpty()
+      // 写操作后自动触发一次防抖同步
+      repo.setSyncHook(() => debouncedSync(() => get().triggerSync(false)))
 
-    const [status, meta] = await Promise.all([getSyncStatus(), getMeta()])
-    set({ syncStatus: status, appearance: meta.appearance })
-    // 启动先拉一次远端（若已授权）
-    if (status === 'ok') {
-      await sync({ requestPermission: false })
+      const meta = await getMeta()
+      const pages = await repo.listNavPages()
+      const activePageId = pages[0]?.id ?? null
+      // 先画出本地书签。云盘权限查询在部分 iCloud 目录上会永远不返回。
+      set({ appearance: meta.appearance, pages, activePageId, loading: false })
+      if (activePageId) await get().loadPage(activePageId)
+    } catch (error) {
+      console.warn('[init] failed:', error)
+      set({ loading: false })
     }
 
-    const pages = await repo.listNavPages()
-    const activePageId = pages[0]?.id ?? null
-    set({ pages, activePageId, loading: false })
-    if (activePageId) await get().loadPage(activePageId)
+    void get().triggerSync(false).catch((error) => {
+      console.warn('[init] sync failed:', error)
+      set({ syncStatus: 'error' })
+    })
 
     // 缓解“某设备从不打开新标签页就同步不到”的问题：
     // 标签页重新可见 / 窗口聚焦 / 定时器，都触发一次后台同步（节流）。

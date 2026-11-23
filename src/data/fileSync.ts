@@ -16,6 +16,16 @@ import type {
   SyncedAppearance,
 } from '../shared/types'
 import { now } from '../shared/id'
+import {
+  FS_TIMEOUT_MS,
+  PERMISSION_TIMEOUT_MS,
+  isFsTimeout,
+  isPermissionError,
+  permissionAllowsUse,
+  snapshotForDisk,
+  withTimeout,
+  type DirectoryPermission,
+} from './fsAccess'
 
 /**
  * 云盘目录同步。
@@ -38,15 +48,19 @@ export function isFileSystemAccessSupported(): boolean {
   return typeof (globalThis as any).showDirectoryPicker === 'function'
 }
 
-/** 让用户选择云盘目录，并持久化句柄以便复用授权 */
+/** 让用户选择云盘目录，并持久化句柄以便复用授权。取消选择时返回 null。 */
 export async function pickSyncDirectory(): Promise<FileSystemDirectoryHandle | null> {
   if (!isFileSystemAccessSupported()) return null
-  const handle = await (globalThis as any).showDirectoryPicker({
-    id: 'mark-isle-sync',
-    mode: 'readwrite',
-  })
-  await db.kv.put({ key: DIR_HANDLE_KEY, value: handle })
-  return handle as FileSystemDirectoryHandle
+  try {
+    const handle = await (globalThis as any).showDirectoryPicker({
+      id: 'mark-isle-sync',
+      mode: 'readwrite',
+    })
+    await db.kv.put({ key: DIR_HANDLE_KEY, value: handle })
+    return handle as FileSystemDirectoryHandle
+  } catch {
+    return null
+  }
 }
 
 async function loadDirHandle(): Promise<FileSystemDirectoryHandle | null> {
@@ -58,42 +72,71 @@ export async function clearSyncDirectory(): Promise<void> {
   await db.kv.delete(DIR_HANDLE_KEY)
 }
 
+async function probePermission(
+  handle: FileSystemDirectoryHandle,
+  request: boolean,
+): Promise<DirectoryPermission> {
+  const opts = { mode: 'readwrite' } as const
+  try {
+    // Chrome 对 iCloud 目录可能让 queryPermission 永远 pending。超时后换成重新选目录，不再碰旧句柄。
+    const q = await withTimeout(
+      // @ts-expect-error 实验性 API
+      handle.queryPermission(opts),
+      PERMISSION_TIMEOUT_MS,
+      'queryPermission',
+    )
+    if (q === 'granted') return 'granted'
+    if (!request) return q === 'denied' ? 'denied' : 'prompt'
+    const r = await withTimeout(
+      // @ts-expect-error 实验性 API
+      handle.requestPermission(opts),
+      PERMISSION_TIMEOUT_MS,
+      'requestPermission',
+    )
+    return r === 'granted' ? 'granted' : 'denied'
+  } catch (error) {
+    if (isFsTimeout(error)) return 'unresponsive'
+    return 'denied'
+  }
+}
+
 async function ensurePermission(
   handle: FileSystemDirectoryHandle,
   request: boolean,
 ): Promise<boolean> {
-  const opts = { mode: 'readwrite' } as const
-  // @ts-expect-error 实验性 API
-  const q = await handle.queryPermission(opts)
-  if (q === 'granted') return true
-  if (!request) return false
-  // @ts-expect-error 实验性 API
-  const r = await handle.requestPermission(opts)
-  return r === 'granted'
+  return permissionAllowsUse(await probePermission(handle, request))
 }
 
 export async function getSyncStatus(): Promise<SyncStatus> {
-  if (!isFileSystemAccessSupported()) return 'error'
-  const handle = await loadDirHandle()
-  if (!handle) return 'unconfigured'
-  const ok = await ensurePermission(handle, false)
-  return ok ? 'ok' : 'permission-needed'
+  try {
+    if (!isFileSystemAccessSupported()) return 'error'
+    const handle = await loadDirHandle()
+    if (!handle) return 'unconfigured'
+    const ok = await ensurePermission(handle, false)
+    return ok ? 'ok' : 'permission-needed'
+  } catch (error) {
+    console.warn('[fileSync] status failed:', error)
+    return 'error'
+  }
 }
 
-async function getAppDir(
-  request: boolean,
-): Promise<FileSystemDirectoryHandle | null> {
-  const root = await loadDirHandle()
-  if (!root) return null
-  if (!(await ensurePermission(root, request))) return null
-  return root.getDirectoryHandle(SUBDIR, { create: true })
+function openAppDir(root: FileSystemDirectoryHandle): Promise<FileSystemDirectoryHandle> {
+  return withTimeout(
+    root.getDirectoryHandle(SUBDIR, { create: true }),
+    FS_TIMEOUT_MS,
+    'getDirectoryHandle',
+  )
 }
 
 async function getLegacyAppDir(
   root: FileSystemDirectoryHandle,
 ): Promise<FileSystemDirectoryHandle | null> {
   try {
-    return await root.getDirectoryHandle(LEGACY_SUBDIR)
+    return await withTimeout(
+      root.getDirectoryHandle(LEGACY_SUBDIR),
+      FS_TIMEOUT_MS,
+      'legacy directory',
+    )
   } catch {
     return null
   }
@@ -125,10 +168,14 @@ async function atomicWrite(
   filename: string,
   content: string,
 ): Promise<void> {
-  const fh = await dir.getFileHandle(filename, { create: true })
-  const w = await fh.createWritable()
-  await w.write(content)
-  await w.close()
+  const fh = await withTimeout(
+    dir.getFileHandle(filename, { create: true }),
+    FS_TIMEOUT_MS,
+    'getFileHandle',
+  )
+  const w = await withTimeout(fh.createWritable(), FS_TIMEOUT_MS, 'createWritable')
+  await withTimeout(w.write(content), FS_TIMEOUT_MS, 'write')
+  await withTimeout(w.close(), FS_TIMEOUT_MS, 'close')
 }
 
 async function readDeviceFile(
@@ -136,20 +183,38 @@ async function readDeviceFile(
   filename: string,
 ): Promise<DeviceSnapshot | null> {
   try {
-    const fh = await dir.getFileHandle(filename)
-    const file = await fh.getFile()
-    const text = await file.text()
+    const fh = await withTimeout(dir.getFileHandle(filename), FS_TIMEOUT_MS, 'getFileHandle')
+    const file = await withTimeout(fh.getFile(), FS_TIMEOUT_MS, 'getFile')
+    const text = await withTimeout(file.text(), FS_TIMEOUT_MS, 'file.text')
     return JSON.parse(text) as DeviceSnapshot
   } catch {
     return null
   }
 }
 
+let syncInFlight: Promise<SyncStatus> | null = null
+
 /**
  * 执行一次完整同步：写出本机文件 → 读入其它设备文件 → 合并写回本地。
  * 任何失败都静默返回，不影响本地使用。
+ * 重叠调用共用同一次同步，避免新标签页可见性回调把挂起的目录操作再排一队。
  */
-export async function sync(options: { requestPermission?: boolean } = {}): Promise<SyncStatus> {
+export function sync(options: { requestPermission?: boolean } = {}): Promise<SyncStatus> {
+  const start = () => {
+    let current: Promise<SyncStatus>
+    current = runSync(options).finally(() => {
+      if (syncInFlight === current) syncInFlight = null
+    })
+    syncInFlight = current
+    return current
+  }
+  // 用户刚重新选完目录时必须再跑一遍，不能复用还在用旧句柄的那次同步。
+  if (!syncInFlight) return start()
+  if (!options.requestPermission) return syncInFlight
+  return syncInFlight.then(start, start)
+}
+
+async function runSync(options: { requestPermission?: boolean } = {}): Promise<SyncStatus> {
   if (!isFileSystemAccessSupported()) return 'error'
   const handle = await loadDirHandle()
   if (!handle) return 'unconfigured'
@@ -157,23 +222,30 @@ export async function sync(options: { requestPermission?: boolean } = {}): Promi
   if (!granted) return 'permission-needed'
 
   try {
-    const dir = await getAppDir(options.requestPermission ?? false)
-    if (!dir) return 'permission-needed'
+    const dir = await openAppDir(handle)
 
     const meta = await getMeta()
     const myFile = `device-${meta.deviceId}.json`
 
-    // 1) 写出本机快照
+    // 1) 写出本机快照。大背景图留在本地，避免云盘文件变成数 MB 占位。
     const local = await readLocalSnapshot()
-    await atomicWrite(dir, myFile, JSON.stringify(local, null, 2))
+    await atomicWrite(dir, myFile, JSON.stringify(snapshotForDisk(local), null, 2))
 
     // 2) 读入其它设备文件，并兼容旧品牌目录中的同步快照
     const remotes: DeviceSnapshot[] = []
     const legacyDir = await getLegacyAppDir(handle)
     const readDirs = legacyDir ? [dir, legacyDir] : [dir]
     for (const readDir of readDirs) {
-      // @ts-expect-error async iterator on directory handle
-      for await (const [name, entry] of readDir.entries()) {
+      // 当前 DOM 类型还没有 entries()，运行时 Chrome 是支持的。
+      const iter = (
+        readDir as FileSystemDirectoryHandle & {
+          entries: () => AsyncIterableIterator<[string, FileSystemHandle]>
+        }
+      ).entries()
+      while (true) {
+        const next = await withTimeout(iter.next(), FS_TIMEOUT_MS, 'directory.entries')
+        if (next.done) break
+        const [name, entry] = next.value
         if (entry.kind !== 'file') continue
         if (!name.startsWith('device-') || !name.endsWith('.json')) continue
         if (name === myFile) continue
@@ -191,7 +263,7 @@ export async function sync(options: { requestPermission?: boolean } = {}): Promi
     return 'ok'
   } catch (e) {
     console.warn('[fileSync] sync failed:', e)
-    return 'error'
+    return isPermissionError(e) ? 'permission-needed' : 'error'
   }
 }
 
